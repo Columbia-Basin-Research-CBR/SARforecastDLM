@@ -19,7 +19,9 @@ Commit](https://img.shields.io/github/last-commit/Columbia-Basin-Research-CBR/SA
 changes in one-year ocean survival of wild spring/summer Snake River
 Chinook salmon, *Oncorhynchus tshawytscha*, from [upwelling indices
 (CUI)](https://oceanview.pfeg.noaa.gov/products/upwelling/intro), West
-Coast, USA.
+Coast, USA. This ShinyApp is developed based on the [Scheuerell and
+Williams
+(2005)](https://onlinelibrary.wiley.com/doi/full/10.1111/j.1365-2419.2005.00346.x).
 
 ## Installation
 
