@@ -1,12 +1,8 @@
 Package: SARforecastDLM
-Title: An Amazing Shiny App
+Title: SARforecastDLM
 Version: 0.0.0.9000
-Authors@R: 
-    person(given = "firstname",
-           family = "lastname",
-           role = c("aut", "cre"),
-           email = "your@email.com")
-Description: What the package does (one paragraph).
+Authors@R: person('Caitlin', 'O'Brien', email = 'csobrien@uw.edu', role = c('cre', 'aut'))
+Description: One-year survival forecast for wild SSSR Chinook using DLM.
 License: What license is it under?
 Imports: 
     config (>= 0.3.2),
@@ -20,3 +16,5 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Language: en-US
+URL: https://github.com/Columbia-Basin-Research-CBR/SARforecastDLM.git
+BugReports: https://github.com/Columbia-Basin-Research-CBR/SARforecastDLM.git/issues

@@ -20,12 +20,12 @@
 ##
 golem::fill_desc(
   pkg_name = "SARforecastDLM", # The Name of the package containing the App
-  pkg_title = "PKG_TITLE", # The Title of the package containing the App
-  pkg_description = "PKG_DESC.", # The Description of the package containing the App
-  author_first_name = "AUTHOR_FIRST", # Your First Name
-  author_last_name = "AUTHOR_LAST", # Your Last Name
-  author_email = "AUTHOR@MAIL.COM", # Your Email
-  repo_url = NULL, # The URL of the GitHub Repo (optional),
+  pkg_title = "SARforecastDLM", # The Title of the package containing the App
+  pkg_description = "one-year survival forecast for wild SSSR Chinook using DLM", # The Description of the package containing the App
+  author_first_name = "Caitlin", # Your First Name
+  author_last_name = "O'Brien", # Your Last Name
+  author_email = "csobrien@uw.edu", # Your Email
+  repo_url = "https://github.com/Columbia-Basin-Research-CBR/SARforecastDLM.git", # The URL of the GitHub Repo (optional),
   pkg_version = "0.0.0.9000" # The Version of the package containing the App
 )
 
