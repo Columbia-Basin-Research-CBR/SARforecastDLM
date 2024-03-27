@@ -6,4 +6,8 @@
 #' @noRd
 app_server <- function(input, output, session) {
   # Your application server logic
+
+  mod_welcome_page_server("welcome_page_1")
+
+
 }

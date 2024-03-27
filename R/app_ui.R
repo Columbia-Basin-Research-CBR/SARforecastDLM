@@ -10,10 +10,46 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     # Your application UI logic
     fluidPage(
-      h1("SARforecastDLM")
+
+      ## Page content
+      shinydashboard::dashboardPage(
+        header = shinydashboard::dashboardHeader(
+          title = "Columbia Basin Research" #Seasonal Predictions of Smolt-to-Adult Survival and the Transported to Bypassed fish survival ratio (T:B)
+        ),
+
+        ## Sidebar content - used as a navigation menu to each tab
+        sidebar = shinydashboard::dashboardSidebar(
+
+          #override theme for sidepanel selectInput color
+          shiny::includeCSS(path =  "inst/app/www/theme.css"),
+
+          shinydashboard::sidebarMenu(
+            # Setting id makes input$tabs give the tabName of currently-selected tab
+            id = "tabs",
+            shinydashboard::menuItem("Welcome", tabName = "welcome", icon = icon("house")),
+            shinydashboard::menuItem("Forecast Survival", tabName = "figs", icon = icon("chart-line")),
+            shinydashboard::menuItem("Background Information", tabName = "bkg", icon = icon("book"))
+          )
+        ),
+
+        ## Body content
+        body = shinydashboard::dashboardBody(
+
+          #add CSS CBR global theme
+          fresh::use_theme(CBRtheme),
+
+          #set tab naming with associated modules
+          shinydashboard::tabItems(
+            shinydashboard::tabItem(tabName = "welcome",mod_welcome_page_ui("welcome_page_ui_1")),
+            shinydashboard::tabItem(tabName = "figs"),
+            shinydashboard::tabItem(tabName = "bkg")
+          )
+        )
+      )
     )
   )
 }
+
 
 #' Add external Resources to the Application
 #'
