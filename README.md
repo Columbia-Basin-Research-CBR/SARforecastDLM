@@ -52,7 +52,7 @@ and you have the latest developmental version imported. Use `detach()`
 if not working properly and reinstall.
 
 This option will run the Shiny App within you RStudio environment but
-will now download the background files necessary to run.
+will not download the background files necessary to run.
 
 **Option 2:** If you are interested in the files that support the
 development version, please see:

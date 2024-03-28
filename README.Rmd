@@ -46,7 +46,7 @@ detach("package:SARforecastDLM", unload=TRUE)
 ```
 *SARforecastDLM*is currently in development and changes are continuously being made. If you have already imported to R studio, please rerun `install_github("Columbia-Basin-Research-CBR/SARforecastDLM")` to see latest changes in the developmental version. If no changes have been made since last import, a warning will appear: `Skipping install of 'SARforecastDLM' from a github remote, the SHAX (XXXXXX) has not changed since last install. Use 'force = TRUE' to force installation` and you have the latest developmental version imported. Use `detach()` if not working properly and reinstall. 
 
-This option will run the Shiny App within you RStudio environment but will now download the background files necessary to run. 
+This option will run the Shiny App within you RStudio environment but will not download the background files necessary to run. 
 
 **Option 2:** If you are interested in the files that support the development version, please see: [https://github.com/Columbia-Basin-Research-CBR/SARforecastDLM](https://github.com/Columbia-Basin-Research-CBR/SARforecastDLM) to clone the repository. Alternatively, within Rstudio, use the following steps: 
 
