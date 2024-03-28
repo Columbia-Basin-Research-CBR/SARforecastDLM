@@ -21,7 +21,7 @@ app_ui <- function(request) {
         sidebar = shinydashboard::dashboardSidebar(
 
           #override theme for sidepanel selectInput color
-          shiny::includeCSS(path =  "inst/app/www/theme.css"),
+          shiny::includeCSS(system.file("app/www/theme.css", package = "SARforecastDLM")),
 
           shinydashboard::sidebarMenu(
             # Setting id makes input$tabs give the tabName of currently-selected tab
