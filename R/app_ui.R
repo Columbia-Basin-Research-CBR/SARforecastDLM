@@ -41,7 +41,7 @@ app_ui <- function(request) {
           #set tab naming with associated modules
           shinydashboard::tabItems(
             shinydashboard::tabItem(tabName = "welcome",mod_welcome_page_ui("welcome_page_ui_1")),
-            shinydashboard::tabItem(tabName = "figs"),
+            shinydashboard::tabItem(tabName = "figs", mod_mainpage_ui("mainpage_1")),
             shinydashboard::tabItem(tabName = "bkg")
           )
         )

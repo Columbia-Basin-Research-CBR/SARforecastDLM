@@ -26,7 +26,7 @@ library(rerddap) #import data from ERDDAP
 library(MARSS) #DLM
 library(here) #file paths
 library(car)
-
+library(plotly)
 ```
 
 ## Import data
@@ -312,7 +312,7 @@ df.CUI<-dat$data %>%
 ## only include april CUI from ERDAPP data (for now)
 df.CUI<-df.CUI %>% 
   filter(month == 4) %>% 
-  select(year, upwelling_index) %>% 
+  select(year, upwelling_index) 
   
 
 ```
@@ -445,7 +445,7 @@ mod_list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
 
 ```{r univ.dlm-CUISAR-.fit, eval=TRUE}
 ## fit univariate DLM
-dlm_2 <- MARSS(dat, inits = inits_list, model = mod_list)
+dlm_3 <- MARSS(dat, inits = inits_list, model = mod_list)
 ```
 
 ```{r dlm-CUISAR--plotdlm-1, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=4, fig.width=6, fig.cap='(ref:plotdlm-1)'}
@@ -521,6 +521,9 @@ plot_data <- data.frame(
   fore_var = fore_var, #variance of forecast
   CUI_z = Z[1,2,] #predictor variable
 )
+
+
+
 
 
 

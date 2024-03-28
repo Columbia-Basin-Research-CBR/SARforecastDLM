@@ -12,6 +12,7 @@ app_server <- function(input, output, session) {
   mod_welcome_submodule_leaflet_map_server("leaflet_map_1")
 
 
+  mod_mainpage_server("mainpage_1", data = plot_data)
 
 
 }
