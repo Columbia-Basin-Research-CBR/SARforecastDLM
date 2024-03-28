@@ -1,0 +1,722 @@
+---
+title: "BDLM_Shiny"
+output: html_document
+date: "2024-03-19"
+---
+
+Starting markdown for bayesian dynamic linear model used in Schuerell & William (2005). Study basics
+
+
+**CUI:**
+
+- Included **Pacific Coastal Upwelling Index (CUI)**, otherwise known as the Bakun Index. Pulled data from the National Marine Fisheries Service Pacific Fisheries Environmental Lab (PFEL, http:// www.pfeg.noaa.gov, last accessed 1 July 2004). On a monthly basis, PFEL generates indices of the intensity of large-scale, wind-induced coastal upwelling at 15 standard locations along the west coast of North America (each 3° of latitude from 21°N to 60°N). Following Botsford and Lawrence (2002), we chose the CUI for 45°N latitude 125°W longitude (Fig. 1) to compare with ocean survival of chinook salmon from the Columbia River Basin. 
+
+- **year and month:** Rather than test all 12 months as predictor variables in the time-series model, we first conducted a backward stepwise regression using all 12 months as predictors of the observed SAR. We used the year of ocean entry for March through December, but shifted it 1 yr ahead for January and February to reflect the salmon’s first winter at sea. 
+
+   - The multiple regression analysis identified April, September, and October as significant predictors (Table 1), and therefore we tested all eight combinations of those 1–3 months as predictor varia- bles in the time-series model (see below).
+    
+**SALMON:**
+
+  - **Years:** 1964 to 2003
+  
+  - **rear_type:** wild and hatchery? 
+    
+  - **Counts from dams:** Ice Harbor (pre-1969), Lower Monumental (1969), Little Goose (1970–74), and Lower Granite (1975–present)
+    
+    - *survival:* we calculated ocean survival as the percent of smolts migrating to the ocean in a given year that returned as adults 1, 2, 3, and 4 yr later. We used estimates of wild smolts for the period 1964–84 reported by Raymond (1988). We derived estimates for wild smolts from 1993 to 2003 by expanding the daily counts of wild smolts at Lower Granite Dam (http://www.fpc.org, last accessed 1 July 2004), by the daily estimates of their detection prob- ability at the dam as described by Sandford and Smith (2002). Adult counts include hatchery and wild? look at methods
+    
+    - Appendix A includes the number of smolts indexed by their year of
+ocean entry, the total number of those smolts that returned as adults (adjusted for any harvest), the proportion of adults in each age class, and the subsequent smolt-to-adult survival rate (SAR).
+    
+**Time-series**
+
+- Time series of the Pacific coastal upwelling index calculated for (a) April, (b) September, and (c) October from 1964 to 2003 at 45°N 125°W.
+
+- One-year-ahead forecasts are generated at each time step, and the parameters are updated as new information becomes incorporated into the model. Through the use of discounting, priors are given weights that determine how influential the prior data are when updating the parameter estimates. These discounts essentially represent the rate of exponential decay of useful information such that when the dis- count is 1 (its maximum value), all of the prior information is retained, whereas a discount near 0 means no prior information is used at all. In general, the lower the discount value, the faster a parameter can change through time, but at the cost of decreased precision of the estimate.
+
+```{r import_packages, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(rerddap)
+library(MARSS)
+library(here)
+```
+# DATA
+
+
+## Upwelling index
+[NOAA upwelling indices](https://oceanview.pfeg.noaa.gov/products/upwelling/intro)
+[ERDAPP vignette](https://cran.r-project.org/web/packages/rerddap/vignettes/rerddap.html)
+
+```{r import_CUTI_ERDAPP, message=FALSE}
+
+
+# Set the URL of the ERDDAP server
+url <- "https://upwell.pfeg.noaa.gov/erddap/"
+
+# Get information about the erdCUTI dataset
+info <- info(datasetid = "erdCUTImonthly", url = url)
+
+
+# Download the dataset
+dat <- griddap(info,
+               time = c("1988-01-15T00:00:00Z", "2023-12-15T00:00:00Z"), #currently pulling all data to date
+               latitude = c(45,45)
+)
+
+df.CUTI<-dat$data %>% 
+  mutate(time.day = lubridate::ymd_hms(time),
+         year = year(time.day),
+         month = month(time.day),
+         day = day(time.day)) %>% 
+  filter(month == 4) #only include april 
+#1988 to 2023
+```
+
+
+```{r import_CUI_ERDAPP, message=FALSE}
+#search upwelling query
+#ed_search(query = 'upwelling', which = "grid")
+
+info <- info(datasetid = "erdUI45mo", url = url)
+
+# Download the dataset
+dat <- griddap(info,
+               time = c("1964-01-01T00:00:00Z", "2024-02-15T00:00:00Z"), #currently pulling all data to date
+               latitude = c(45,45)
+)
+
+df.CUI<-dat$data %>% 
+  mutate(time.day = lubridate::ymd_hms(time),
+         year = year(time.day),
+         month = month(time.day),
+         day = day(time.day), 
+         adjlong = longitude-360)
+```
+
+
+## Salmon
+
+*pending method*
+```{r import_fish_DART}
+
+
+
+```
+
+```{r import_fish_FPC}
+
+
+
+```
+
+
+# MARSS {.tabset}
+Searching online, it appears that most of the code needed is outlined in [DLM tutorial](https://atsa-es.github.io/atsa-labs/sec-dlm-fitting-a-univariate-dlm-with-marss.html) by Eli Holmes and Mark Scheurelle for ATSAR series. Has video tutorials as well. Seem to be using the package `MARSS` developed by EH and MS with co-authors [Ropensci/ATSA](https://atsa-es.r-universe.dev/packages). 
+
+## Original dataset
+### DATA
+```{r import_data_MARSS}
+## load the data
+data(SalmonSurvCUI, package = "MARSS")
+## get time indices
+years <- SalmonSurvCUI[, 1]
+## number of years of data
+TT <- length(years)
+## get response variable: logit(survival)
+dat <- matrix(SalmonSurvCUI[,2], nrow = 1)
+```
+
+```{r z.score, eval=TRUE}
+## get predictor variable
+CUI <- SalmonSurvCUI[,3]
+## z-score the CUI
+CUI_z <- matrix((CUI - mean(CUI)) / sqrt(var(CUI)), nrow = 1)
+## number of regr params (slope + intercept)
+m <- dim(CUI_z)[1] + 1
+```
+
+```{r dlm-plotdata, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=4, fig.width=6, fig.cap='(ref:plotdata)'}
+par(mfrow = c(m, 1), mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
+plot(years, dat, xlab = "", ylab = "Logit(SAR)",
+     bty = "n", xaxt = "n", pch = 16, col = "darkgreen", type = "b")
+plot(years, CUI_z, xlab = "", ylab = "CUI",
+     bty = "n", xaxt = "n", pch = 16, col = "blue", type = "b")
+axis(1, at = seq(1965, 2005, 5))
+mtext("Year of ocean entry", 1, line = 3)
+```
+
+### DLM 
+
+```{r univ.DLM.proc, eval=TRUE}
+## for process eqn
+B <- diag(m)                        ## 2x2; Identity
+U <- matrix(0, nrow = m, ncol = 1)  ## 2x1; both elements = 0
+Q <- matrix(list(0), m, m)          ## 2x2; all 0 for now
+diag(Q) <- c("q.alpha", "q.beta")   ## 2x2; diag = (q1,q2)
+```
+```{r univ.DLM.obs, eval=TRUE}
+## for observation eqn
+Z <- array(NA, c(1, m, TT))  ## NxMxT; empty for now
+Z[1,1,] <- rep(1, TT)        ## Nx1; 1's for intercept
+Z[1,2,] <- CUI_z             ## Nx1; predictor variable
+A <- matrix(0)               ## 1x1; scalar = 0
+R <- matrix("r")             ## 1x1; scalar = r
+```
+
+
+```{r univ.DLM.list, eval=TRUE}
+## only need starting values for regr parameters
+inits_list <- list(x0 = matrix(c(0, 0), nrow = m))
+
+## list of model matrices & vectors
+mod_list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
+```
+
+
+```{r univ.DLM.fit, eval=TRUE}
+## fit univariate DLM
+dlm_1 <- MARSS(dat, inits = inits_list, model = mod_list)
+```
+```{r dlm-plotdlm-1, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=4, fig.width=6, fig.cap='(ref:plotdlm-1)'}
+ylabs <- c(expression(alpha[t]), expression(beta[t]))
+colr <- c("darkgreen","blue")
+par(mfrow = c(m, 1), mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
+for(i in 1:m) {
+  mn <- dlm_1$states[i,]
+  se <- dlm_1$states.se[i,]
+  plot(years, mn, xlab = "", ylab = ylabs[i], bty = "n", xaxt = "n", type = "n",
+       ylim = c(min(mn-2*se), max(mn+2*se)))
+  lines(years, rep(0,TT), lty = "dashed")
+  lines(years, mn, col = colr[i], lwd = 3)
+  lines(years, mn+2*se, col = colr[i])
+  lines(years, mn-2*se, col = colr[i])
+}
+axis(1, at = seq(1965, 2005, 5))
+mtext("Year of ocean entry", 1, line = 3)
+```
+
+### Forecasting
+```{r univ.DLM.fore_mean, eval=TRUE}
+## get list of Kalman filter output
+kf_out <- MARSSkfss(dlm_1)
+
+## forecasts of regr parameters; 2xT matrix
+eta <- kf_out$xtt1
+
+## ts of E(forecasts)
+fore_mean <- vector()
+for(t in 1:TT) {
+  fore_mean[t] <- Z[,,t] %*% eta[, t, drop = FALSE]
+}
+```
+
+
+```{r univ.DLM.fore_var, eval=TRUE}
+## variance of regr parameters; 1x2xT array
+Phi <- kf_out$Vtt1
+
+## obs variance; 1x1 matrix
+R_est <- coef(dlm_1, type="matrix")$R
+
+## ts of Var(forecasts)
+fore_var <- vector()
+for(t in 1:TT) {
+  tZ <- matrix(Z[, , t], m, 1) ## transpose of Z
+  fore_var[t] <- Z[, , t] %*% Phi[, , t] %*% tZ + R_est
+}
+```
+
+```{r dlm-plotdlmForeLogit, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=3, fig.width=6, fig.cap='(ref:plotdlmForeLogit)'}
+par(mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
+ylims=c(min(fore_mean - 2*sqrt(fore_var)), max(fore_mean+2*sqrt(fore_var)))
+plot(years, t(dat), type = "p", pch = 16, ylim = ylims,
+     col = "blue", xlab = "", ylab = "Logit(SAR)", xaxt = "n")
+lines(years, fore_mean, type = "l", xaxt = "n", ylab = "", lwd = 3)
+lines(years, fore_mean+2*sqrt(fore_var))
+lines(years, fore_mean-2*sqrt(fore_var))
+axis(1, at = seq(1965, 2005, 5))
+mtext("Year of ocean entry", 1, line = 3)
+```
+```{r dlm-plotdlmForeRaw, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=3, fig.width=6, fig.cap='(ref:plotdlmForeRaw)'}
+invLogit <- function(x) {
+  1 / ( 1 + exp(-x))
+  }
+ff <- invLogit(fore_mean)
+fup <- invLogit(fore_mean+2*sqrt(fore_var))
+flo <- invLogit(fore_mean-2*sqrt(fore_var))
+par(mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
+ylims <- c(min(flo), max(fup))
+plot(years, invLogit(t(dat)), type = "p", pch = 16, ylim = ylims,
+     col = "blue", xlab = "", ylab = "Survival (SAR)", xaxt = "n")
+lines(years, ff, type = "l", xaxt = "n", ylab = "", lwd = 3)
+lines(years, fup)
+lines(years, flo)
+axis(1, at = seq(1965, 2005, 5))
+mtext("Year of ocean entry", 1, line = 3)
+```
+
+### Diagnose forecast
+
+```{r dlmInnov, eval=TRUE, echo=TRUE}
+## forecast errors
+innov <- kf_out$Innov
+```
+
+```{r dlmQQplot, eval=FALSE, echo=TRUE}
+## Q-Q plot of innovations
+qqnorm(t(innov), main = "", pch = 16, col = "blue")
+## add y=x line for easier interpretation
+qqline(t(innov))
+```
+
+```{r dlm-plotdlmQQ, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=2, fig.width=4, fig.cap='(ref:plotdlmQQ)'}
+## use layout to get nicer plots
+layout(matrix(c(0,1,1,1,0),1,5,byrow=TRUE))
+
+## set up L plotting space
+par(mar=c(4,4,1,0), oma=c(0,0,0,0.5))
+
+## Q-Q plot of innovations
+qqnorm(t(innov), main="", pch=16, col="blue")
+qqline(t(innov))
+```
+```{r dlmInnovTtest, eval=TRUE, echo=TRUE}
+## p-value for t-test of H0: E(innov) = 0
+t.test(t(innov), mu = 0)$p.value
+```
+
+```{r dlmACFplot, eval=FALSE, echo=TRUE}
+## plot ACF of innovations
+acf(t(innov), lag.max = 10)
+```
+
+```{r dlm-plotdlmACF, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=2, fig.width=4, fig.cap='(ref:plotdlmACF)'}
+## use layout to get nicer plots
+layout(matrix(c(0, 1, 1, 1, 0), 1, 5, byrow = TRUE))
+
+## set up plotting space
+par(mar = c(4, 4, 1, 0), oma = c(0, 0, 0, 0.5))
+
+## ACF of innovations
+acf(t(innov), lwd = 2, lag.max = 10)
+```
+
+## Try with CUTI 1988 to 2005
+### DATA
+```{r addCUTI}
+## load the data
+df.CUTI.88to05<-df.CUTI %>% 
+  filter(between(year, 1988, 2005)) %>% 
+  select(year, CUTI) 
+
+## get time indices; filter to 1988 to 05
+df.salcuti.88to05<-SalmonSurvCUI %>% 
+  filter(between(year,1988, 2005)) %>% 
+  select(year, logit.s)
+
+df<-df.salcuti.88to05 %>% 
+  inner_join(df.CUTI.88to05, by = "year")
+
+years <- df[, 1]
+## number of years of data
+TT <- length(years)
+## get response variable: logit(survival)
+dat <- matrix(df[,2], nrow = 1)
+```
+
+```{r z.score-CUTI, eval=TRUE}
+## get predictor variable
+CUTI <- df[,3]
+## z-score the CUI
+CUTI_z <- matrix((CUTI - mean(CUTI)) / sqrt(var(CUTI)), nrow = 1)
+## number of regr params (slope + intercept)
+m <- dim(CUTI_z)[1] + 1
+```
+
+```{r dlm-CUTI--plotdata, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=4, fig.width=6, fig.cap='(ref:plotdata)'}
+par(mfrow = c(m, 1), mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
+plot(years, dat, xlab = "", ylab = "Logit(SAR)",
+     bty = "n", xaxt = "n", pch = 16, col = "darkgreen", type = "b")
+plot(years, CUTI_z, xlab = "", ylab = "CUTI",
+     bty = "n", xaxt = "n", pch = 16, col = "blue", type = "b")
+axis(1, at = seq(1988, 2005, 5))
+mtext("Year of ocean entry", 1, line = 3)
+```
+
+### dlm-CUTI- 
+
+```{r univ.dlm-CUTI-.proc, eval=TRUE}
+## for process eqn
+B <- diag(m)                        ## 2x2; Identity
+U <- matrix(0, nrow = m, ncol = 1)  ## 2x1; both elements = 0
+Q <- matrix(list(0), m, m)          ## 2x2; all 0 for now
+diag(Q) <- c("q.alpha", "q.beta")   ## 2x2; diag = (q1,q2)
+```
+
+```{r univ.dlm-CUTI-.obs, eval=TRUE}
+## for observation eqn
+Z <- array(NA, c(1, m, TT))  ## NxMxT; empty for now
+Z[1,1,] <- rep(1, TT)        ## Nx1; 1's for intercept
+Z[1,2,] <- CUTI_z             ## Nx1; predictor variable
+A <- matrix(0)               ## 1x1; scalar = 0
+R <- matrix("r")             ## 1x1; scalar = r
+```
+
+
+```{r univ.dlm-CUTI-.list, eval=TRUE}
+## only need starting values for regr parameters
+inits_list <- list(x0 = matrix(c(0, 0), nrow = m))
+
+## list of model matrices & vectors
+mod_list_CUTI <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
+```
+
+
+```{r univ.dlm-CUTI-.fit, eval=TRUE}
+## fit univariate DLM
+dlm_2 <- MARSS(dat, inits = inits_list, model = mod_list_CUTI)
+```
+```{r dlm-CUTI--plotdlm-1, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=4, fig.width=6, fig.cap='(ref:plotdlm-1)'}
+ylabs <- c(expression(alpha[t]), expression(beta[t]))
+colr <- c("darkgreen","blue")
+par(mfrow = c(m, 1), mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
+for(i in 1:m) {
+  mn <- dlm_2$states[i,]
+  se <- dlm_2$states.se[i,]
+  plot(years, mn, xlab = "", ylab = ylabs[i], bty = "n", xaxt = "n", type = "n",
+       ylim = c(min(mn-2*se), max(mn+2*se)))
+  lines(years, rep(0,TT), lty = "dashed")
+  lines(years, mn, col = colr[i], lwd = 3)
+  lines(years, mn+2*se, col = colr[i])
+  lines(years, mn-2*se, col = colr[i])
+}
+axis(1, at = seq(1988, 2005, 5))
+mtext("Year of ocean entry", 1, line = 3)
+```
+
+### Forecasting
+```{r univ.dlm-CUTI-.fore_mean, eval=TRUE}
+## get list of Kalman filter output
+kf_out <- MARSSkfss(dlm_2)
+
+## forecasts of regr parameters; 2xT matrix
+eta <- kf_out$xtt1
+
+## ts of E(forecasts)
+fore_mean <- vector()
+for(t in 1:TT) {
+  fore_mean[t] <- Z[,,t] %*% eta[, t, drop = FALSE]
+}
+```
+
+
+```{r univ.dlm-CUTI-.fore_var, eval=TRUE}
+## variance of regr parameters; 1x2xT array
+Phi <- kf_out$Vtt1
+
+## obs variance; 1x1 matrix
+R_est <- coef(dlm_2, type="matrix")$R
+
+## ts of Var(forecasts)
+fore_var <- vector()
+for(t in 1:TT) {
+  tZ <- matrix(Z[, , t], m, 1) ## transpose of Z
+  fore_var[t] <- Z[, , t] %*% Phi[, , t] %*% tZ + R_est
+}
+```
+
+```{r dlm-CUTI--plotdlmForeLogit, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=3, fig.width=6, fig.cap='(ref:plotdlmForeLogit)'}
+par(mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
+ylims=c(min(fore_mean - 2*sqrt(fore_var)), max(fore_mean+2*sqrt(fore_var)))
+plot(years, t(dat), type = "p", pch = 16, ylim = ylims,
+     col = "blue", xlab = "", ylab = "Logit(SAR)", xaxt = "n")
+lines(years, fore_mean, type = "l", xaxt = "n", ylab = "", lwd = 3)
+lines(years, fore_mean+2*sqrt(fore_var))
+lines(years, fore_mean-2*sqrt(fore_var))
+axis(1, at = seq(1965, 2005, 5))
+mtext("Year of ocean entry", 1, line = 3)
+```
+```{r dlm-CUTI--plotdlmForeRaw, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=3, fig.width=6, fig.cap='(ref:plotdlmForeRaw)'}
+invLogit <- function(x) {
+  1 / ( 1 + exp(-x))
+  }
+ff <- invLogit(fore_mean)
+fup <- invLogit(fore_mean+2*sqrt(fore_var))
+flo <- invLogit(fore_mean-2*sqrt(fore_var))
+par(mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
+ylims <- c(min(flo), max(fup))
+plot(years, invLogit(t(dat)), type = "p", pch = 16, ylim = ylims,
+     col = "blue", xlab = "", ylab = "Survival (SAR)", xaxt = "n")
+lines(years, ff, type = "l", xaxt = "n", ylab = "", lwd = 3)
+lines(years, fup)
+lines(years, flo)
+axis(1, at = seq(1965, 2005, 5))
+mtext("Year of ocean entry", 1, line = 3)
+```
+
+### Diagnose forecast
+
+```{r dlm-CUTI-Innov, eval=TRUE, echo=TRUE}
+## forecast errors
+innov <- kf_out$Innov
+```
+
+```{r dlm-CUTI-QQplot, eval=FALSE, echo=TRUE}
+## Q-Q plot of innovations
+qqnorm(t(innov), main = "", pch = 16, col = "blue")
+## add y=x line for easier interpretation
+qqline(t(innov))
+```
+
+```{r dlm-CUTI--plotdlmQQ, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=2, fig.width=4, fig.cap='(ref:plotdlmQQ)'}
+## use layout to get nicer plots
+layout(matrix(c(0,1,1,1,0),1,5,byrow=TRUE))
+
+## set up L plotting space
+par(mar=c(4,4,1,0), oma=c(0,0,0,0.5))
+
+## Q-Q plot of innovations
+qqnorm(t(innov), main="", pch=16, col="blue")
+qqline(t(innov))
+```
+```{r dlm-CUTI-InnovTtest, eval=TRUE, echo=TRUE}
+## p-value for t-test of H0: E(innov) = 0
+t.test(t(innov), mu = 0)$p.value
+```
+
+```{r dlm-CUTI-ACFplot, eval=FALSE, echo=TRUE}
+## plot ACF of innovations
+acf(t(innov), lag.max = 10)
+```
+
+```{r dlm-CUTI--plotdlmACF, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=2, fig.width=4, fig.cap='(ref:plotdlmACF)'}
+## use layout to get nicer plots
+layout(matrix(c(0, 1, 1, 1, 0), 1, 5, byrow = TRUE))
+
+## set up plotting space
+par(mar = c(4, 4, 1, 0), oma = c(0, 0, 0, 0.5))
+
+## ACF of innovations
+acf(t(innov), lwd = 2, lag.max = 10)
+```
+
+```{r append data}
+
+
+
+```
+
+## Try with CUI 1964 to 2021
+### DATA
+```{r addsurvival}
+sar_2002to2023_dart<-read.csv(here::here("sar_2002to2023_dart.csv"))
+
+sar_2002to2023_dart$sar.logit <-car::logit(sar_2002to2023_dart$SAR)
+
+
+## only include april CUI from ERDAPP data
+df.CUI<-df.CUI %>% 
+  filter(month == 4) %>% 
+    filter(between(year,1964, 2021)) %>% 
+  select(year, upwelling_index)
+  
+## add SAR through 2006 to 2021 to CUI from ERDAPP
+
+df.sar<-sar_2002to2023_dart %>% 
+  select(Year, sar.logit) %>% 
+  filter(between(Year, 2006,2021)) %>% 
+  inner_join(df.CUI, by = c("Year"="year")) %>% 
+  rename("year" = Year,
+         "logit.s" = sar.logit,
+         "CUI.apr" = upwelling_index) %>% 
+  arrange(year)
+
+#Append data to original dataset
+df<-rbind(SalmonSurvCUI,df.sar)
+  
+  
+
+
+years <- df[, 1]
+## number of years of data
+TT <- length(years)
+## get response variable: logit(survival)
+dat <- matrix(df[,2], nrow = 1)
+```
+
+```{r z.score-CUISAR, eval=TRUE}
+## get predictor variable
+CUI <- df[,3]
+## z-score the CUI
+CUI_z <- matrix((CUI - mean(CUI)) / sqrt(var(CUI)), nrow = 1)
+## number of regr params (slope + intercept)
+m <- dim(CUI_z)[1] + 1
+```
+
+```{r dlm-CUISAR-plotdata, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=4, fig.width=6, fig.cap='(ref:plotdata)'}
+par(mfrow = c(m, 1), mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
+plot(years, dat, xlab = "", ylab = "Logit(SAR)",
+     bty = "n", xaxt = "n", pch = 16, col = "darkgreen", type = "b")
+plot(years, CUI_z, xlab = "", ylab = "CUI",
+     bty = "n", xaxt = "n", pch = 16, col = "blue", type = "b")
+axis(1, at = seq(1964, 2024, 5))
+mtext("Year of ocean entry", 1, line = 3)
+```
+
+### dlm-CUISAR- 
+
+```{r univ.dlm-CUISAR-.proc, eval=TRUE}
+## for process eqn
+B <- diag(m)                        ## 2x2; Identity
+U <- matrix(0, nrow = m, ncol = 1)  ## 2x1; both elements = 0
+Q <- matrix(list(0), m, m)          ## 2x2; all 0 for now
+diag(Q) <- c("q.alpha", "q.beta")   ## 2x2; diag = (q1,q2)
+```
+```{r univ.dlm-CUISAR-.obs, eval=TRUE}
+## for observation eqn
+Z <- array(NA, c(1, m, TT))  ## NxMxT; empty for now
+Z[1,1,] <- rep(1, TT)        ## Nx1; 1's for intercept
+Z[1,2,] <- CUI_z             ## Nx1; predictor variable
+A <- matrix(0)               ## 1x1; scalar = 0
+R <- matrix("r")             ## 1x1; scalar = r
+```
+
+
+```{r univ.dlm-CUISAR-.list, eval=TRUE}
+## only need starting values for regr parameters
+inits_list <- list(x0 = matrix(c(0, 0), nrow = m))
+
+## list of model matrices & vectors
+mod_list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
+```
+
+
+```{r univ.dlm-CUISAR-.fit, eval=TRUE}
+## fit univariate DLM
+dlm_3 <- MARSS(dat, inits = inits_list, model = mod_list)
+```
+```{r dlm-CUISAR--plotdlm-1, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=4, fig.width=6, fig.cap='(ref:plotdlm-1)'}
+ylabs <- c(expression(alpha[t]), expression(beta[t]))
+colr <- c("darkgreen","blue")
+par(mfrow = c(m, 1), mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
+for(i in 1:m) {
+  mn <- dlm_3$states[i,]
+  se <- dlm_3$states.se[i,]
+  plot(years, mn, xlab = "", ylab = ylabs[i], bty = "n", xaxt = "n", type = "n",
+       ylim = c(min(mn-2*se), max(mn+2*se)))
+  lines(years, rep(0,TT), lty = "dashed")
+  lines(years, mn, col = colr[i], lwd = 3)
+  lines(years, mn+2*se, col = colr[i])
+  lines(years, mn-2*se, col = colr[i])
+}
+axis(1, at = seq(1964, 2024, 5))
+mtext("Year of ocean entry", 1, line = 3)
+```
+
+### Forecasting
+```{r univ.dlm-CUISAR-.fore_mean, eval=TRUE}
+## get list of Kalman filter output
+kf_out <- MARSSkfss(dlm_3)
+
+## forecasts of regr parameters; 2xT matrix
+eta <- kf_out$xtt1
+
+## ts of E(forecasts)
+fore_mean <- vector()
+for(t in 1:TT) {
+  fore_mean[t] <- Z[,,t] %*% eta[, t, drop = FALSE]
+}
+```
+
+
+```{r univ.dlm-CUISAR-.fore_var, eval=TRUE}
+## variance of regr parameters; 1x2xT array
+Phi <- kf_out$Vtt1
+
+## obs variance; 1x1 matrix
+R_est <- coef(dlm_3, type="matrix")$R
+
+## ts of Var(forecasts)
+fore_var <- vector()
+for(t in 1:TT) {
+  tZ <- matrix(Z[, , t], m, 1) ## transpose of Z
+  fore_var[t] <- Z[, , t] %*% Phi[, , t] %*% tZ + R_est
+}
+```
+
+```{r dlm-CUISAR--plotdlmForeLogit, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=3, fig.width=6, fig.cap='(ref:plotdlmForeLogit)'}
+par(mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
+ylims=c(min(fore_mean - 2*sqrt(fore_var)), max(fore_mean+2*sqrt(fore_var)))
+plot(years, t(dat), type = "p", pch = 16, ylim = ylims,
+     col = "blue", xlab = "", ylab = "Logit(SAR)", xaxt = "n")
+lines(years, fore_mean, type = "l", xaxt = "n", ylab = "", lwd = 3)
+lines(years, fore_mean+2*sqrt(fore_var))
+lines(years, fore_mean-2*sqrt(fore_var))
+axis(1, at = seq(1964, 2024, 5))
+mtext("Year of ocean entry", 1, line = 3)
+```
+```{r dlm-CUISAR--plotdlmForeRaw, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=3, fig.width=6, fig.cap='(ref:plotdlmForeRaw)'}
+invLogit <- function(x) {
+  1 / ( 1 + exp(-x))
+  }
+ff <- invLogit(fore_mean)
+fup <- invLogit(fore_mean+2*sqrt(fore_var))
+flo <- invLogit(fore_mean-2*sqrt(fore_var))
+par(mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
+ylims <- c(min(flo), max(fup))
+plot(years, invLogit(t(dat)), type = "p", pch = 16, ylim = ylims,
+     col = "blue", xlab = "", ylab = "Survival (SAR)", xaxt = "n")
+lines(years, ff, type = "l", xaxt = "n", ylab = "", lwd = 3)
+lines(years, fup)
+lines(years, flo)
+axis(1, at = seq(1964, 2024, 5))
+mtext("Year of ocean entry", 1, line = 3)
+```
+
+### Diagnose forecast
+
+```{r dlm-CUISAR-Innov, eval=TRUE, echo=TRUE}
+## forecast errors
+innov <- kf_out$Innov
+```
+
+```{r dlm-CUISAR-QQplot, eval=FALSE, echo=TRUE}
+## Q-Q plot of innovations
+qqnorm(t(innov), main = "", pch = 16, col = "blue")
+## add y=x line for easier interpretation
+qqline(t(innov))
+```
+
+```{r dlm-CUISAR--plotdlmQQ, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=2, fig.width=4, fig.cap='(ref:plotdlmQQ)'}
+## use layout to get nicer plots
+layout(matrix(c(0,1,1,1,0),1,5,byrow=TRUE))
+
+## set up L plotting space
+par(mar=c(4,4,1,0), oma=c(0,0,0,0.5))
+
+## Q-Q plot of innovations
+qqnorm(t(innov), main="", pch=16, col="blue")
+qqline(t(innov))
+```
+```{r dlm-CUISAR-InnovTtest, eval=TRUE, echo=TRUE}
+## p-value for t-test of H0: E(innov) = 0
+t.test(t(innov), mu = 0)$p.value
+```
+
+```{r dlm-CUISAR-ACFplot, eval=FALSE, echo=TRUE}
+## plot ACF of innovations
+acf(t(innov), lag.max = 10)
+```
+
+```{r dlm-CUISAR--plotdlmACF, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=2, fig.width=4, fig.cap='(ref:plotdlmACF)'}
+## use layout to get nicer plots
+layout(matrix(c(0, 1, 1, 1, 0), 1, 5, byrow = TRUE))
+
+## set up plotting space
+par(mar = c(4, 4, 1, 0), oma = c(0, 0, 0, 0.5))
+
+## ACF of innovations
+acf(t(innov), lwd = 2, lag.max = 10)
+```
+
+

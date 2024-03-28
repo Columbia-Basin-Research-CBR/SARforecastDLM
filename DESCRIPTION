@@ -9,6 +9,7 @@ Imports:
     dplyr,
     ggplot2,
     golem (>= 0.4.1),
+    here,
     leaflet,
     magrittr,
     plotly,
