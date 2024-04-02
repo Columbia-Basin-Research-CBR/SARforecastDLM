@@ -2,6 +2,7 @@
 ^\.Rproj\.user$
 ^data-raw$
 dev_history.R
+.Rhistory
 ^dev$
 $run_dev.*
 ^.here$
