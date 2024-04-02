@@ -8,6 +8,8 @@ output:
     toc_float: true
     css: styles.css
 ---
+
+
     
 Code to prepare `SARforecastDLM_forecast` dataset. Once run, `usethis::use_data(SARforecastDLM_generate_forecast, overwrite = TRUE)` to add to the data/ folder. 
 
@@ -20,7 +22,7 @@ Markdown includes:
 
 ## Load libraries
 
-```{r import_packages, warning=FALSE, message=FALSE}
+```{r load_libraries, warning=FALSE, message=FALSE}
 library(tidyverse) #data wrangling
 library(rerddap) #import data from ERDDAP
 library(MARSS) #DLM
@@ -29,37 +31,6 @@ library(car)
 library(plotly)
 ```
 
-## Import data
-
-### NOAA upwelling indices
-
-```{r import_CUI_ERDAPP, message=FALSE}
-
-# Set the URL of the ERDDAP server
-url <- "https://upwell.pfeg.noaa.gov/erddap/"
-
-# Get information about the erdCUTI dataset
-info <- info(datasetid = "erdUI45mo", url = url)
-
-# Download the dataset
-dat <- griddap(info,
-               time = c("1964-01-01T00:00:00Z", "2024-02-15T00:00:00Z"), #currently pulling all data to date (adjust as needed)
-               latitude = c(45,45)
-)
-
-df.CUI<-dat$data %>% 
-  mutate(time.day = lubridate::ymd_hms(time),
-         year = year(time.day),
-         month = month(time.day),
-         day = day(time.day), 
-         adjlong = longitude-360) #set to -180 to 180
-
-```
-
-
-### SAR data
-
-pending
 
 
 ## DLM -- MARSS package
@@ -71,6 +42,7 @@ Searching online, it appears that most of the code needed is outlined in [DLM tu
 
 #### original data from `SalmonSurvCUI` package
 
+Includes data from 1964 to 2005. See [Scheuerell and Williams (2005)](https://onlinelibrary.wiley.com/doi/full/10.1111/j.1365-2419.2005.00346.x) for explanation of SAR for specific years. 
 ```{r import_data_MARSS}
 ## load the data
 data(SalmonSurvCUI, package = "MARSS")
@@ -83,6 +55,7 @@ TT <- length(years)
 dat <- matrix(SalmonSurvCUI[,2], nrow = 1)
 ```
 
+Using CUI with MARSS package, pull CUI and scale:
 ```{r z.score, eval=TRUE}
 ## get predictor variable: CUI
 CUI <- SalmonSurvCUI[,3]
@@ -283,8 +256,14 @@ acf(t(innov), lwd = 2, lag.max = 10)
 
 
 
+
+
+
 ## CUI 1964 to 2021 and SAR 2002 to 2023 (via CBR)
-### DATA
+
+### Import data
+
+
 
 #### NOAA upwelling indice CUI
 
@@ -302,6 +281,7 @@ dat <- griddap(info,
                latitude = c(45,45)
 )
 
+# format time and lat/long
 df.CUI<-dat$data %>% 
   mutate(time.day = lubridate::ymd_hms(time),
          year = year(time.day),
@@ -317,33 +297,39 @@ df.CUI<-df.CUI %>%
 
 ```
 
+#### Smolt-to-adult (SAR) survival via CBR
 
+Accessed wild Chinook Snake R Spring/Summer ESU SAR survival from Lower Granite (LGR) to Lower Granite (LGA), for in-river, transport, and bypass route fish. Excluded 0,1-Year Adult Detections per CBR recommendation. 
+
+[CBR DART::PIT Tag Columbia Vasin ESU & DPS Queries](https://www.cbr.washington.edu/dart/query/pit_sar_esu)
 ```{r import_SAR_CBR}
-
-#get data pre 2002
+#CBR SAR start reporting in 2002; pull MARSS provided data from 1964 to 2002 
 data(SalmonSurvCUI, package = "MARSS")
 
+# keep year and logit.s; drop CUI
 sar_64to99<-filter(SalmonSurvCUI, between(year, 1964,1999)) %>% 
   select(year, logit.s)
 
-#get post 99 SAR
+#future: ask susannah about query html link to import directly into R for SAR csv. 
+#For now, use previously generated .csv and import for SAR through present
 W_SAR<-read.csv(here("data-raw/SAR","LGRtoLGA_allpass_W_spsu_ch.csv"))
 W_SAR<-W_SAR[-c(24:31),] #drop CBR notes
 
-#combine sar with CUI
 
-#dataset to test
-sar.obs<-W_SAR %>% 
-  mutate(year = as.numeric(year)) %>% 
-  select(year, meanSAR) %>% 
-  mutate( logit.s = car::logit(meanSAR)) %>% 
-  select(year, logit.s) %>% 
-  rbind(sar_64to99) %>% 
-  left_join(df.CUI, by = c("year"="year")) %>% 
-  arrange(year) %>% 
-  filter(!is.na(logit.s))
+#combine SAR data from 1964 to present with erdapp imported CUI
 
-#dataset to pred (includes CUI for 2022 and 2023)
+# #dataset to test
+# sar.obs<-W_SAR %>% 
+#   mutate(year = as.numeric(year)) %>% 
+#   select(year, meanSAR) %>% 
+#   mutate( logit.s = car::logit(meanSAR)) %>% 
+#   select(year, logit.s) %>% 
+#   rbind(sar_64to99) %>% 
+#   left_join(df.CUI, by = c("year"="year")) %>% 
+#   arrange(year) %>% 
+#   filter(!is.na(logit.s))
+
+#dataset to pred (includes CUI for 2022 and 2023 with no SAR)
 sar.pred<-W_SAR %>% 
   mutate(year = as.numeric(year)) %>% 
   select(year, meanSAR) %>% 
@@ -353,8 +339,16 @@ sar.pred<-W_SAR %>%
   left_join(df.CUI, by = c("year"="year")) %>% 
   arrange(year) %>% 
   filter(!is.na(upwelling_index))
+```
 
 
+#### wrangle data for DLM
+
+```{r extract_year_reponse_SAR}
+
+#extract time indices, number of years of data, and response variable: logit(survival)
+
+# extract year, tt,and response for 
 years <- sar.pred[, 1]
 ## number of years of data
 TT <- length(years)
@@ -374,17 +368,9 @@ CUI_z <- matrix((CUI - mean(CUI)) / sqrt(var(CUI)), nrow = 1)
 m <- dim(CUI_z)[1] + 1
 ```
 
-```{r dlm-CUISAR-plotdata, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=4, fig.width=6, fig.cap='(ref:plotdata)'}
-par(mfrow = c(m, 1), mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
-plot(years, dat, xlab = "", ylab = "Logit(SAR)",
-     bty = "n", xaxt = "n", pch = 16, col = "darkgreen", type = "b")
-plot(years, CUI_z, xlab = "", ylab = "CUI",
-     bty = "n", xaxt = "n", pch = 16, col = "blue", type = "b")
-axis(1, at = seq(1964, 2024, 5))
-mtext("Year of ocean entry", 1, line = 3)
-```
 
 
+ View data: 
 ```{r dlm-CUISAR-plotdata_plotly, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=4, fig.width=6, fig.cap='(ref:plotdata)'}
 
 plotly::ggplotly(
@@ -441,14 +427,14 @@ inits_list <- list(x0 = matrix(c(0, 0), nrow = m))
 mod_list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
 ```
 
-#### fit DLM
+#### fit DLM (with NA for SAR 2022/2023)
 
 ```{r univ.dlm-CUISAR-.fit, eval=TRUE}
 ## fit univariate DLM
 dlm_3 <- MARSS(dat, inits = inits_list, model = mod_list)
 ```
 
-```{r dlm-CUISAR--plotdlm-1, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=4, fig.width=6, fig.cap='(ref:plotdlm-1)'}
+```{r dlm-CUISAR--plotdlm-3, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=4, fig.width=6, fig.cap='(ref:plotdlm-1)'}
 ylabs <- c(expression(alpha[t]), expression(beta[t]))
 colr <- c("darkgreen","blue")
 par(mfrow = c(m, 1), mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
@@ -497,46 +483,53 @@ for(t in 1:TT) {
 }
 ```
 
-```{r dlm-CUISAR--plotdlmForeLogit, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=3, fig.width=6, fig.cap='(ref:plotdlmForeLogit)'}
-par(mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
-ylims=c(min(fore_mean - 2*sqrt(fore_var)), max(fore_mean+2*sqrt(fore_var)))
-plot(years, t(dat), type = "p", pch = 16, ylim = ylims,
-     col = "blue", xlab = "", ylab = "Logit(SAR)", xaxt = "n")
-lines(years, fore_mean, type = "l", xaxt = "n", ylab = "", lwd = 3)
-lines(years, fore_mean+2*sqrt(fore_var))
-lines(years, fore_mean-2*sqrt(fore_var))
-axis(1, at = seq(1964, 2024, 5))
-mtext("Year of ocean entry", 1, line = 3)
-```
+```{r dlm-CUISAR-plotdata, eval=TRUE, echo=FALSE }
 
-
-```{r dlm-CUISAR--plotdlmForeLogit_plotly, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=3, fig.width=6, fig.cap='(ref:plotdlmForeLogit)'}
+#fct inv logit
+invLogit <- function(x) {
+  1 / ( 1 + exp(-x))
+}
 
 
 # Create a data frame for plotting from model
 plot_data <- data.frame(
   years = years, #years
-  sar.obs = t(dat), #observed sar data
-  fore_mean = fore_mean, #mean of forecast
-  fore_var = fore_var, #variance of forecast
-  CUI_z = Z[1,2,] #predictor variable
-)
+  logit.s = t(dat), #observed sar data_scaled,
+  sar = invLogit(t(dat)),  #observed sar data
+  fore_mean_z = fore_mean, #mean of forecast scaled
+  fore_var_z = fore_var, #variance of forecast scaled
+  CUI_z = Z[1,2,] #predictor variable scaled 
+)  %>% 
+  mutate(
+  ff = invLogit(fore_mean), # mean untransformedSAR mean forecast
+  fupr = invLogit(fore_mean+2*sqrt(fore_var)), #upper 
+  flwr = invLogit(fore_mean-2*sqrt(fore_var)) #lower
+  )
 
+# Use augmented to save only untransformed for shiny plot
+plot_data <- data.frame(
+  years = years, #years
+  sar = invLogit(t(dat)),  #observed sar data
+  CUI_z = Z[1,2,] #predictor variable scaled 
+)  %>% 
+  mutate(
+  fore_mean = invLogit(fore_mean), # mean untransformedSAR mean forecast
+  fore_var_upper = invLogit(fore_mean+2*sqrt(fore_var)), #upper 
+  fore_var_lower = invLogit(fore_mean-2*sqrt(fore_var)) #lower
+  )
 
+#then update plot .R with new variables
 
+```
 
+```{r dlm-CUISAR--plotdlmForeLogit_plotly, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=3, fig.width=6, fig.cap='(ref:plotdlmForeLogit)'}
 
-
-# Create the plot
-
-
-
-
+# Create the plot (logit.s)
 p<-ggplot(plot_data, aes(x = years)) +
-  geom_point(aes(y = sar.obs), color = "#b47747") +
-  geom_line(aes(y = fore_mean)) +
-  geom_line(aes(y = fore_mean + 2 * sqrt(fore_var)), linetype = "dashed") +
-  geom_line(aes(y = fore_mean - 2 * sqrt(fore_var)), linetype = "dashed") +
+  geom_point(aes(y = logit.s), color = "#b47747") +
+  geom_line(aes(y = fore_mean_z)) +
+  geom_line(aes(y = fore_mean_z + 2 * sqrt(fore_var_z)), linetype = "dashed") +
+  geom_line(aes(y = fore_mean_z - 2 * sqrt(fore_var_z)), linetype = "dashed") +
   scale_x_continuous(breaks = seq(1964, 2024, 10)) +
   scale_linetype_manual(values = c("solid", "dashed"),
                         breaks = c("Forecasted logit.sar", "95% CI")) +
@@ -563,41 +556,33 @@ p_plotly <- p_plotly %>%
   )
 
 p_plotly
-
-
 ```
 
-```{r}
-library(plotly)
-# Create a data frame for line segments
-line_data <- data.frame(
-  x = plot_data$years[-nrow(plot_data)],
-  xend = plot_data$years[-1],
-  y = plot_data$fore_mean[-nrow(plot_data)],
-  yend = plot_data$fore_mean[-1],
-  color = ifelse(is.na(plot_data$sar.obs[-nrow(plot_data)]), "Forecasted Logit(SAR)", "95% CI"),
-  linetype = ifelse(is.na(plot_data$sar.obs[-nrow(plot_data)]), "solid", "dashed")
-)
 
-# Create the ggplot
-p <- ggplot() +
-  geom_segment(data = line_data, aes(x = x, xend = xend, y = y, yend = yend, color = color, linetype = linetype)) +
-  scale_color_manual(values = c("Forecasted Logit(SAR)" = "black", "95% CI" = "black")) +
-  scale_linetype_manual(values = c("Forecasted Logit(SAR)" = "solid", "95% CI" = "dashed")) +
-  geom_point(data = plot_data, aes(x = years, y = sar.obs, color = "Observed Data"), size = 3) +
+
+Code below is used for SAR plot featured on shinyAPP
+```{r dlm-CUISAR--plotdlmForeRaw, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=3, fig.width=6, fig.cap='(ref:plotdlmForeRaw)'}
+p<-ggplot(plot_data, aes(x = years)) +
+  geom_point(aes(y = sar), color = "#b47747") +
+  geom_line(aes(y = ff)) +
+  geom_line(aes(y = fupr), linetype = "dashed") +
+  geom_line(aes(y = flwr), linetype = "dashed") +
   scale_x_continuous(breaks = seq(1964, 2024, 10)) +
-  labs(x = "Year of ocean entry", y = "Logit(SAR)", color = "Legend") +
+  scale_linetype_manual(values = c("solid", "dashed")) +
+  labs(x = "Year of ocean entry", 
+       y = "Smolt-to-Adult Survival Ratio") + 
+  # annotate("rect", xmin = 2021, xmax = 2023, ymin = -Inf, ymax = Inf, fill = "grey", alpha = 0.2) +
   theme_classic() +
   theme(axis.line = element_line(color = "black"))
 
-# Convert to plotly
-p_plotly <- ggplotly(p)
+
+p_plotly<-ggplotly(p)
 
 # Add rectangle
 p_plotly <- p_plotly %>% 
-  add_trace(
+  plotly::add_trace(
     x = c(2021, 2024, 2024, 2021), 
-    y = c(-8.5, -8.5, -1.8, -1.8), 
+    y = c(-0, -0, .13, .13), 
     fill = "toself", 
     fillcolor = "grey", 
     line = list(width = 0), 
@@ -611,28 +596,6 @@ p_plotly
 ```
 
 
-```{r dlm-CUISAR--plotdlmForeRaw, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=3, fig.width=6, fig.cap='(ref:plotdlmForeRaw)'}
-
-```
-
-
-```{r dlm-CUISAR--plotdlmForeRaw, eval=TRUE, echo=FALSE, fig=TRUE, fig.height=3, fig.width=6, fig.cap='(ref:plotdlmForeRaw)'}
-invLogit <- function(x) {
-  1 / ( 1 + exp(-x))
-  }
-ff <- invLogit(fore_mean)
-fup <- invLogit(fore_mean+2*sqrt(fore_var))
-flo <- invLogit(fore_mean-2*sqrt(fore_var))
-par(mar = c(4, 4, 0.1, 0), oma = c(0, 0, 2, 0.5))
-ylims <- c(min(flo), max(fup))
-plot(years, invLogit(t(dat)), type = "p", pch = 16, ylim = ylims,
-     col = "blue", xlab = "", ylab = "Survival (SAR)", xaxt = "n")
-lines(years, ff, type = "l", xaxt = "n", ylab = "", lwd = 3)
-lines(years, fup)
-lines(years, flo)
-axis(1, at = seq(1964, 2024, 5))
-mtext("Year of ocean entry", 1, line = 3)
-```
 
 ### Diagnose forecast
 
