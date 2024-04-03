@@ -7,43 +7,91 @@
 #' @noRd
 
 
-fct_forecast_plot <-function(data){
+fct_forecast_plot <- function(data) {
+
+  # Create a plotly plot
+  p_plotly <- plot_ly() %>%
+
+     # Add "forecasted" rectangle
+      add_trace(
+        x = c(2021, 2024, 2024, 2021),
+        y = c(0, 0, .13, .13),
+        fill = "toself",
+        fillcolor = "grey",
+        line = list(width = 0),
+        opacity = 0.2,
+        # showlegend = FALSE,
+        name = "Forecasted,\nout-of-sample",
+        legendgroup = "forecasted2",
+        legendrank = 3,
+        type = "scatter",
+        mode = "none",
+        hoverinfo = "none"
+      ) %>%
+    # add observed and predicted SAR lines and markers
+    add_markers(data = data,
+                x = ~years,
+                y = ~sar.obs,
+                name = "Observed SAR",
+                legendgroup = "observed",
+                legendrank = 1,
+                text = ~paste("Year of ocean entry:", years, "<br>Observed SAR:",custom_round(sar.obs)),
+                hoverinfo = "text",
+                marker = list(color = "#b47747")) %>%
+    add_lines(data = data, x = ~years,
+              y = ~fore_mean_raw,
+              name = "Forecasted SAR",
+              legendgroup = "forecasted",
+              legendrank = 2,
+              text = ~paste("Year of ocean entry:", years, "<br>Forecasted SAR:",custom_round(fore_mean_raw)),
+              hoverinfo = "text",
+              line = list(color = "black"),
+              hoverinfo = "text") %>%
+    add_markers(data = data,
+                x = ~years,
+                y = ~fore_mean_raw,
+                name = "Forecasted SAR",
+                legendgroup = "forecasted",
+                legendrank = 2,
+                text = ~paste("Year of ocean entry:", years, "<br>Forecasted SAR:", custom_round(fore_mean_raw)),
+                hoverinfo = "text",
+                marker = list(size = 6, color = "black"),
+                showlegend = FALSE) %>%
+    add_lines(data = data,
+              x = ~years,
+              y = ~fore_var_upper,
+              name = "Upper 95% CI",
+              legendgroup = "forecasted",
+              legendrank = 2,
+              text = ~paste("Year of ocean entry:", years, "<br>Forecasted SAR upper 95% CI:",custom_round(fore_var_upper)),
+              line = list(dash = "dash",
+                          color = "black"),
+              hoverinfo = "text") %>%
+    add_lines(data = data,
+              x = ~years,
+              y = ~fore_var_lower,
+              name = "Lower 95% CI",
+              legendgroup = "forecasted",
+              legendrank = 2,
+              text = ~paste("Year of ocean entry:", years, "<br>Forecasted SAR lower 95% CI:", custom_round(fore_var_lower)),
+              line = list(dash = "dash",
+                          color = "black"),
+              hoverinfo = "text") %>%
+    layout(xaxis = list(title = "Year of ocean entry", tickmode = "array", tickvals = seq(1964, 2024, 10)),
+           yaxis = list(title = "Smolt-to-adult survival \n(%)"),
+           hovermode = "closest"
+           )
+
+  p_plotly <- plotly::config(p_plotly,
+                     displayModeBar = TRUE,
+                     modeBarButtonsToRemove = list("zoom2d",
+                                                   "autoScale2d",
+                                                   "lasso2d",
+                                                   "select2d"
+                                                  )
+                     )
 
 
-# Create the plot
-
-p<-ggplot2::ggplot(data, ggplot2::aes(x = years)) +
-  ggplot2::geom_point(ggplot2::aes(y = sar.obs), color = "#b47747") +
-  ggplot2::geom_line(ggplot2::aes(y = fore_mean)) +
-  ggplot2::geom_line(ggplot2::aes(y = fore_mean + 2 * sqrt(fore_var)), linetype = "dashed") +
-  ggplot2::geom_line(ggplot2::aes(y = fore_mean - 2 * sqrt(fore_var)), linetype = "dashed") +
-  ggplot2::scale_x_continuous(breaks = seq(1964, 2024, 10)) +
-  ggplot2::scale_linetype_manual(values = c("solid", "dashed"),
-                        breaks = c("Forecasted logit.sar", "95% CI")) +
-  ggplot2::labs(x = "Year of ocean entry",
-       y = "Logit(SAR)") +
-  # annotate("rect", xmin = 2021, xmax = 2023, ymin = -Inf, ymax = Inf, fill = "grey", alpha = 0.2) +
-  ggplot2::theme_classic() +
-  ggplot2::theme(axis.line = ggplot2::element_line(color = "black"))
-
-# Convert to plotly
-p_plotly<-plotly::ggplotly(p)
-
-# Add rectangle
-p_plotly <- p_plotly %>%
-  plotly::add_trace(
-    x = c(2021, 2024, 2024, 2021),
-    y = c(-8.5, -8.5, -1.8, -1.8),
-    fill = "toself",
-    fillcolor = "grey",
-    line = list(width = 0),
-    opacity = 0.2,
-    showlegend = FALSE,
-    type = "scatter",
-    mode = "none"
-  )
-
-# Return the plot
-return(p_plotly)
-
+  # Return the plot
+  return(p_plotly)
 }

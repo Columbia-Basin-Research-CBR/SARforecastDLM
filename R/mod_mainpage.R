@@ -22,6 +22,21 @@ mod_mainpage_ui <- function(id){
         "Dynamic Linear Modelling (DLM) to explore changes in ocean survival from coastal ocean upwelling index (CUI)",
       ),
 
+      shinydashboard::box(
+        width = 12,
+        status = "info",
+        collapsible = TRUE,
+        collapsed = FALSE,
+        title = "Coastal Upwelling Index: 1964 to present",
+        fluidRow(
+          column(
+            width = 10,
+            offset = 1, # Centering the column
+            plotly::plotlyOutput(outputId = ns("plot_CUI"),height = "50%")
+          )
+        )
+      ),
+
       shinydashboard::box(width = 12,
                           title = "Add data selection in future",
                           status = "info",
@@ -36,9 +51,8 @@ mod_mainpage_ui <- function(id){
         title = "One year ahead forecast:",
         fluidRow(
           column(
-            width = 10,
-            offset = 1, # Centering the column
-           plotly::plotlyOutput(outputId = ns("plot_forecast"),height = "50%")
+            width = 12,
+           plotly::plotlyOutput(outputId = ns("plot_forecast"))
           )
         )
       )
@@ -52,6 +66,11 @@ mod_mainpage_ui <- function(id){
 mod_mainpage_server <- function(id, data){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
+
+    output$plot_CUI <- plotly::renderPlotly({
+
+      fct_CUI_plot(data = data)
+    })
 
 
      output$plot_forecast <- plotly::renderPlotly({
