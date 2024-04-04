@@ -6,7 +6,7 @@
 \alias{SARforecastDLM-package}
 \title{SARforecastDLM: SARforecastDLM}
 \description{
-one-year survival forecast for wild SSSR Chinook using DLM
+One-year survival forecast for wild SSSR Chinook using DLM from coastal upwelling indices.
 }
 \seealso{
 Useful links:

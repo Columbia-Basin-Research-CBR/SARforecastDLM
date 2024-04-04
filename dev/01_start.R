@@ -21,7 +21,7 @@
 golem::fill_desc(
   pkg_name = "SARforecastDLM", # The Name of the package containing the App
   pkg_title = "SARforecastDLM", # The Title of the package containing the App
-  pkg_description = "one-year survival forecast for wild SSSR Chinook using DLM", # The Description of the package containing the App
+  pkg_description = "One-year survival forecast for wild SSSR Chinook using DLM from coastal upwelling indices.", # The Description of the package containing the App
   author_first_name = "Caitlin", # Your First Name
   author_last_name = "OBrien", # Your Last Name
   author_email = "csobrien@uw.edu", # Your Email

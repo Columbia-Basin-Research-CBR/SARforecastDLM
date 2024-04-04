@@ -2,21 +2,18 @@ Package: SARforecastDLM
 Title: SARforecastDLM
 Version: 0.0.0.9000
 Authors@R: person('Caitlin', 'OBrien', email = 'csobrien@uw.edu', role = c('cre', 'aut'))
-Description: one-year survival forecast for wild SSSR Chinook using DLM
+Description: One-year survival forecast for wild SSSR Chinook using DLM from coastal upwelling indices.
 License: What license is it under?
 Imports: 
     config (>= 0.3.2),
     dplyr,
     fresh,
-    ggplot2,
     golem (>= 0.4.1),
-    here,
     leaflet,
     magrittr,
     plotly,
     shiny (>= 1.8.0),
-    shinydashboard,
-    shinyWidgets
+    shinydashboard
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.1

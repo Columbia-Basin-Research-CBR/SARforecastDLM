@@ -19,29 +19,32 @@ mod_mainpage_ui <- function(id){
         collapsible = TRUE,
         collapsed = FALSE,
         title = "One-year ahead forecast of Chinook salmon survival",
-        "Dynamic Linear Modelling (DLM) to explore changes in ocean survival from coastal ocean upwelling index (CUI)",
+        "Dynamic Linear Modelling (DLM) to explore changes in ocean survival from upwelling indices",
       ),
+
+
+      shinydashboard::box(width = 12,
+                          title = "Select factors of interest as you explore one-year ahead forecast for SAR:",
+                          status = "info",
+                          collapsible = TRUE,
+                          collapsed = FALSE,
+                          mod_mainpage_submodule_dataselection_ui("submodule_dataselection_1")
+                          ),
 
       shinydashboard::box(
         width = 12,
         status = "info",
         collapsible = TRUE,
         collapsed = FALSE,
-        title = "Coastal Upwelling Index: 1964 to present",
+        title = shiny::uiOutput(ns("dynamic_index_title")),
         fluidRow(
           column(
             width = 10,
             offset = 1, # Centering the column
-            plotly::plotlyOutput(outputId = ns("plot_CUI"),height = "50%")
+            plotly::plotlyOutput(outputId = ns("plot_index"),height = "50%")
           )
         )
       ),
-
-      shinydashboard::box(width = 12,
-                          title = "Add data selection in future",
-                          status = "info",
-                          collapsible = TRUE,
-                          collapsed = TRUE),
 
       shinydashboard::box(
         width = 12,
@@ -67,15 +70,27 @@ mod_mainpage_server <- function(id, data){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
-    output$plot_CUI <- plotly::renderPlotly({
+    # Generate dynamic index title
+    output$dynamic_index_title <- shiny::renderUI({
+      selected_index <- data()$index[1]  # Get selected index
 
-      fct_CUI_plot(data = data)
+      # Generate title based on selected index
+      title <- switch(selected_index,
+                      "CUI" = paste("Coastal Upwelling Index: 1964 to 2023"),
+                      "CUTI" = paste("Coastal Upwelling Transport Index: 1988 to 2023"),
+                      "Pick an index")
+
+      shiny::HTML(title)  # Return title as HTML
+    })
+
+    #generate reactive plots
+    output$plot_index <- plotly::renderPlotly({
+      fct_index_plot(data = data())
     })
 
 
      output$plot_forecast <- plotly::renderPlotly({
-
-      fct_forecast_plot(data = data)
+      fct_forecast_plot(data = data())
     })
 
   })

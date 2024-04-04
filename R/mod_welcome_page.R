@@ -1,6 +1,6 @@
 #' welcome_page UI Function
 #'
-#' @description A shiny Module.
+#' @description welcome page for shinyapp
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
@@ -17,7 +17,9 @@ mod_welcome_page_ui <- function(id){
         width = 12,
         solidHeader = TRUE,
         status = "primary",
-        em("a Shiny App to explore one-year forecast of Chinook salmon survival")
+        HTML("<em> a Shiny App to explore one-year forecast of Chinook salmon survival based on
+             <a href='https://onlinelibrary.wiley.com/doi/full/10.1111/j.1365-2419.2005.00346.x'>Scheurell and Williams (2005)</a>
+             </em>")
       )
     ),
     #add leaflet map
@@ -26,7 +28,7 @@ mod_welcome_page_ui <- function(id){
     fluidRow(
       shinydashboard::box(
         title = "What does this application do?",
-        width = 12,
+        width = 6,
         solidHeader = TRUE,
         status = "primary",
         div(
@@ -37,7 +39,7 @@ mod_welcome_page_ui <- function(id){
       ),
       shinydashboard::box(
         title = "How to use this application?",
-        width = 12,
+        width = 6,
         solidHeader = TRUE,
         status = "primary",
         HTML("

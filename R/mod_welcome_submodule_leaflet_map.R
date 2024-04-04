@@ -40,7 +40,7 @@ mod_welcome_submodule_leaflet_map_server <- function(id){
 
 
     # Mock data for Columbia and Snake rivers//add as needed
-    rivers_data <- tibble::tibble(
+    rivers_data <- data.frame(
       Name = c("Lower Granite Dam (LGR)","Lower Granite Dam (LGA)", "Bonneville Dam (BON)", "Bonneville Dam (BON)", "Coastal Upwelling Index (CUI)"),
       label =  c("<b>Lower Granite Dam (LGR)</b>
                  <br> add text about outmigration and
