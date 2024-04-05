@@ -325,16 +325,16 @@ W_SAR<-W_SAR[-c(24:31),] #drop CBR notes
 
 #combine SAR data from 1964 to present with erdapp imported CUI
 
-# #dataset to test
-# sar.obs<-W_SAR %>% 
-#   mutate(year = as.numeric(year)) %>% 
-#   select(year, meanSAR) %>% 
-#   mutate( logit.s = car::logit(meanSAR)) %>% 
-#   select(year, logit.s) %>% 
-#   rbind(sar_64to99) %>% 
-#   left_join(df.CUI, by = c("year"="year")) %>% 
-#   arrange(year) %>% 
-#   filter(!is.na(logit.s))
+#dataset to test
+sar.obs<-W_SAR %>%
+  mutate(year = as.numeric(year)) %>%
+  select(year, meanSAR) %>%
+  mutate( logit.s = car::logit(meanSAR)) %>%
+  select(year, logit.s) %>%
+  rbind(sar_64to99) %>%
+  left_join(df.CUI, by = c("year"="year")) %>%
+  arrange(year) %>%
+  filter(!is.na(logit.s))
 
 #dataset to pred (includes CUI for 2022 and 2023 with no SAR). Confirm this method as "forecasting" and not just filling in NA values
 sar.pred<-W_SAR %>% 
@@ -357,11 +357,11 @@ sar.pred<-W_SAR %>%
 #extract time indices, number of years of data, and response variable: logit(survival)
 
 # extract year, tt,and response for 
-years <- sar.pred[, 1]
+years <- sar.obs[, 1]
 ## number of years of data
 TT <- length(years)
 ## get response variable: logit(survival)
-dat <- matrix(sar.pred[,2], nrow = 1)
+dat <- matrix(sar.obs[,2], nrow = 1)
   
 
 ```
@@ -369,7 +369,7 @@ dat <- matrix(sar.pred[,2], nrow = 1)
 
 ```{r z.score-CUISAR, eval=TRUE}
 ## get predictor variable
-CUI <- sar.pred[,3]
+CUI <- sar.obs[,3]
 ## z-score the CUI
 CUI_z <- matrix((CUI - mean(CUI)) / sqrt(var(CUI)), nrow = 1)
 ## number of regr params (slope + intercept)
@@ -462,6 +462,29 @@ mtext("Year of ocean entry", 1, line = 3)
 ```
 
 ### forecasting DLM
+https://atsa-es.github.io/MARSS/reference/predict_marssMLE.html
+```{r}
+fr<-MARSS::forecast(dlm_2, h= 2, type = "ytT", interval = "confidence", newdata = sar.pred)
+plot(fr)
+
+forecast_df$year <- (1964:2021)
+forecast_df<-fr$pred
+fr$newdata
+df
+fr$year
+
+# add CUI for 2022/2023
+new_values <- c(-17, -29)  # replace with actual values
+
+# Create new Z matrix with only two time points
+Z_new <- matrix(c(new_values), nrow = 1, ncol = 2, byrow = TRUE)
+
+predict(dlm_2, newdata = sar.pred, type = "ytT")
+
+matrix(5,2,10)
+t
+```
+
 ```{r univ.dlm-CUISAR-.fore_mean, eval=TRUE}
 ## get list of Kalman filter output
 kf_out <- MARSSkfss(dlm_2)
@@ -1059,6 +1082,7 @@ plot_data_2 <- data.frame(
   pass_type = "Both"
   )
 ```
+
 
 
 # save plot_data
