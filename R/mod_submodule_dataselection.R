@@ -29,7 +29,7 @@ mod_mainpage_submodule_dataselection_ui <- function(id){
         selectInput(
           inputId = ns("select_rear"),
           label = "Select rear type(s)",
-          choices = unique(plot_data$rear_type),
+          choices = c("Both", "Hatchery-origin", "Natural-origin"),#unique(plot_data$rear_type),
           selected = "Both",
           multiple = TRUE
         )
@@ -41,7 +41,7 @@ mod_mainpage_submodule_dataselection_ui <- function(id){
         selectInput(
           inputId = ns("select_pass"),
           label = "Select passage type(s)",
-          choices = unique(plot_data$pass_type),
+          choices = c("Both", "Transported", "In-river"),#unique(plot_data$rear_type),
           selected = "Both",
           multiple = TRUE
         )
