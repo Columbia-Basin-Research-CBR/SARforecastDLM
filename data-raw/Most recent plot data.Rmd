@@ -202,9 +202,8 @@ plot(forecastCUTI_df)
 
 accuracy(dlm_1_CUTI)
 
-
 forecastCUTI_df_raw<-forecastCUTI_df%>% 
-  mutate(across(c(,3:9), ~plogis(.) * 100)) %>% 
+  mutate(across(c(,3:9), ~stats::plogis(.) * 100)) %>% 
   rename("fore_CI_95_upper" = `Hi 95`,
          "fore_CI_95_lower" = `Lo 95`) %>% 
   mutate(year = 1988:2007,
