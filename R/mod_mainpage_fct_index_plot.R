@@ -17,8 +17,8 @@ fct_index_plot <- function(data) {
 
   plot <- plotly::plot_ly(
     data = data,
-    x = ~years,
-    y = ~value,
+    x = ~year,
+    y = ~upwelling_index,
     type = "scatter",
     mode = "lines+markers",
     marker = list(color = "#024c63"),
@@ -37,7 +37,6 @@ fct_index_plot <- function(data) {
       "zoom2d",
       "autoScale2d",
       "lasso2d",
-      "select2d",
       "hoverClosestCartesian",
       "hoverCompareCartesian"
     )

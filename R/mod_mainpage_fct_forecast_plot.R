@@ -9,87 +9,109 @@
 
 fct_forecast_plot <- function(data) {
   # Create a plotly plot
-  p_plotly <- plotly::plot_ly() %>%
-    # Add "forecasted" rectangle
-    plotly::add_trace(
-      x = c(2021, 2024, 2024, 2021),
-      y = c(0, 0, .13, .13), # look into making adjustable based on index selected
-      fill = "toself",
-      fillcolor = "grey",
-      line = list(width = 0),
-      opacity = 0.2,
-      # showlegend = FALSE,
-      name = "Forecasted,\nout-of-sample",
-      legendgroup = "forecasted2",
-      legendrank = 3,
-      type = "scatter",
-      mode = "none",
-      hoverinfo = "none"
-    ) %>%
-    # add observed and predicted SAR lines and markers
-    plotly::add_markers(
-      data = data,
-      x = ~years,
-      y = ~sar.obs,
-      name = "Observed SAR",
-      legendgroup = "observed",
-      legendrank = 1,
-      text = ~ paste("Year of ocean entry:", years, "<br>Observed SAR:", custom_round(sar.obs)),
-      hoverinfo = "text",
-      marker = list(color = "#b47747")
-    ) %>%
-    plotly::add_lines(
-      data = data,
-      x = ~years,
-      y = ~fore_mean_raw,
-      name = "Forecasted SAR",
-      legendgroup = "forecasted",
-      legendrank = 2,
-      text = ~ paste("Year of ocean entry:", years, "<br>Forecasted SAR:", custom_round(fore_mean_raw)),
-      hoverinfo = "text",
-      line = list(color = "black"),
-      hoverinfo = "text"
-    ) %>%
-    plotly::add_markers(
-      data = data,
-      x = ~years,
-      y = ~fore_mean_raw,
-      name = "Forecasted SAR",
-      legendgroup = "forecasted",
-      legendrank = 2,
-      text = ~ paste("Year of ocean entry:", years, "<br>Forecasted SAR:", custom_round(fore_mean_raw)),
-      hoverinfo = "text",
-      marker = list(size = 6, color = "black"),
-      showlegend = FALSE
-    ) %>%
-    plotly::add_lines(
-      data = data,
-      x = ~years,
-      y = ~fore_var_upper,
-      name = "Upper 95% CI",
-      legendgroup = "forecasted",
-      legendrank = 2,
-      text = ~ paste("Year of ocean entry:", years, "<br>Forecasted SAR upper 95% CI:", custom_round(fore_var_upper)),
-      line = list(
-        dash = "dash",
-        color = "black"
-      ),
-      hoverinfo = "text"
-    ) %>%
-    plotly::add_lines(
-      data = data,
-      x = ~years,
-      y = ~fore_var_lower,
-      name = "Lower 95% CI",
-      legendgroup = "forecasted",
-      legendrank = 2,
-      text = ~ paste("Year of ocean entry:", years, "<br>Forecasted SAR lower 95% CI:", custom_round(fore_var_lower)),
-      line = list(
-        dash = "dash",
-        color = "black"
-      ),
-      hoverinfo = "text"
-    ) %>%
+  p_plotly <- plotly::plot_ly()
+
+  # Split data by sar.method
+  data_list <- split(data, data$sar.method)
+
+  # Define colors for different sar.methods
+  colors <- c("Scheuerell and Williams (2005)" = "#024c63", "DART" = "#b47747")
+
+  # Define rectangle parameters for different sar.methods
+  rectangle_params <- list(
+    "Scheuerell and Williams (2005)" = list(x = c(2005, 2007, 2007, 2005), y = c(0, 0, 6.5, 6.5)),
+    "DART" = list(x = c(2021, 2024, 2024, 2021), y = c(0, 0, 6.5, 6.5)) # Replace "sar.method2" with the actual second sar.method
+  )
+
+  # Add traces for each sar.method
+  for(i in seq_along(data_list)) {
+
+    # In the loop, use the sar.method name to get the color
+    color <- colors[names(data_list[i])]
+
+    p_plotly <- p_plotly %>%
+      # Add "forecasted" rectangle
+      plotly::add_trace(
+        x = rectangle_params[[names(data_list[i])]]$x,
+        y = rectangle_params[[names(data_list[i])]]$y,
+        fill = "toself",
+        fillcolor = color,
+        line = list(width = 0),
+        opacity = 0.2,
+        name = paste("Forecasted,\nout-of-sample -", names(data_list[i])),
+        legendgroup = paste("forecasted2", i),
+        legendrank = 3,
+        type = "scatter",
+        mode = "none",
+        hoverinfo = "none"
+      ) %>%
+      # add observed and predicted SAR lines and markers
+      plotly::add_markers(
+        data = data_list[[i]],
+        x = ~year,
+        y = ~y,
+        name = paste("Observed SAR -", names(data_list[i])),
+        legendgroup = paste("observed", i),
+        legendrank = 1,
+        text = ~ paste("Year of ocean entry:", year, "<br>Observed SAR:", custom_round(y)),
+        hoverinfo = "text",
+        marker = list(color = color, symbol = "circle-open")
+      ) %>%
+      plotly::add_lines(
+        data = data_list[[i]],
+        x = ~year,
+        y = ~estimate,
+        name = paste("Forecasted SAR -", names(data_list[i])),
+        legendgroup = paste("forecasted", i),
+        legendrank = 2,
+        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR:", custom_round(estimate)),
+        hoverinfo = "text",
+        line = list(color = color),
+        hoverinfo = "text"
+      ) %>%
+      plotly::add_markers(
+        data = data_list[[i]],
+        x = ~year,
+        y = ~estimate,
+        name = paste("Forecasted SAR -", names(data_list[i])),
+        legendgroup = paste("forecasted", i),
+        legendrank = 2,
+        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR:", custom_round(estimate)),
+        hoverinfo = "text",
+        marker = list(size = 6, color = color),
+        showlegend = FALSE
+      ) %>%
+      plotly::add_lines(
+        data = data_list[[i]],
+        x = ~year,
+        y = ~fore_CI_95_upper,
+        name = "Upper 95% CI",
+        legendgroup = paste("forecasted", i),
+        legendrank = 2,
+        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR upper 95% CI:", custom_round(fore_CI_95_upper)),
+        line = list(
+          dash = "dash",
+          color = color
+        ),
+        hoverinfo = "text"
+      ) %>%
+      plotly::add_lines(
+        data = data_list[[i]],
+        x = ~year,
+        y = ~fore_CI_95_lower,
+        name = "Lower 95% CI",
+        legendgroup = paste("forecasted", i),
+        legendrank = 2,
+        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR lower 95% CI:", custom_round(fore_CI_95_lower)),
+        line = list(
+          dash = "dash",
+          color = color
+        ),
+        hoverinfo = "text"
+      )
+  }
+
+  p_plotly <- p_plotly %>%
     plotly::layout(
       xaxis = list(title = "Year of ocean entry"),
       yaxis = list(title = "Smolt-to-adult survival \n(%)"),
@@ -97,13 +119,12 @@ fct_forecast_plot <- function(data) {
     )
 
   p_plotly <- plotly::config(p_plotly,
-    displayModeBar = TRUE,
-    modeBarButtonsToRemove = list(
-      "zoom2d",
-      "autoScale2d",
-      "lasso2d",
-      "select2d"
-    )
+                             displayModeBar = TRUE,
+                             modeBarButtonsToRemove = list(
+                               "zoom2d",
+                               "autoScale2d",
+                               "lasso2d"
+                             )
   )
 
   # Return the plot

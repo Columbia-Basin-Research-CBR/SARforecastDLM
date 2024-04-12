@@ -1,0 +1,452 @@
+---
+title: "worksheet"
+output: html_document
+date: "2024-04-12"
+---
+```{r load_libraries, warning=FALSE, message=FALSE}
+library(tidyverse) #data wrangling
+library(rerddap) #import data from ERDDAP
+library(MARSS) #DLM
+library(here) #file paths
+library(car)
+library(plotly)
+```
+
+
+### `SalmonSurvCUI` data
+
+#### CUI
+Includes data from 1964 to 2005. See [Scheuerell and Williams (2005)](https://onlinelibrary.wiley.com/doi/full/10.1111/j.1365-2419.2005.00346.x) for explanation of SAR for specific years. 
+```{r dlm1_model}
+## load the data
+data(SalmonSurvCUI, package = "MARSS")
+
+## get time indices
+years <- SalmonSurvCUI[, 1]
+## number of years of data
+TT <- length(years)
+## get response variable: logit(survival)
+dat <- matrix(SalmonSurvCUI[,2], nrow = 1)
+
+## get predictor variable: CUI
+CUI <- SalmonSurvCUI[,3]
+
+## ## ## z-score the CUI
+CUI_z <- matrix((CUI - mean(CUI)) / sqrt(var(CUI)), nrow = 1)
+
+## number of regr params (slope + intercept) = 2 
+m <- dim(CUI_z)[1] + 1
+
+### build DLM
+
+## for process eqn
+B <- diag(m)                        ## 2x2; Identity
+U <- matrix(0, nrow = m, ncol = 1)  ## 2x1; both elements = 0
+Q <- matrix(list(0), m, m)          ## 2x2; all 0 for now
+diag(Q) <- c("q.alpha", "q.beta")   ## 2x2; diag = (q1,q2)
+
+## for observation eqn
+Z <- array(NA, c(1, m, TT))  ## NxMxT; empty for now
+Z[1,1,] <- rep(1, TT)        ## Nx1; 1's for intercept
+Z[1,2,] <- CUI_z             ## Nx1; predictor variable
+A <- matrix(0)               ## 1x1; scalar = 0
+R <- matrix("r")             ## 1x1; scalar = r
+
+## only need starting values for regr parameters
+inits_list <- list(x0 = matrix(c(0, 0), nrow = m))
+
+## list of model matrices & vectors
+mod_list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
+
+
+### fit DLM
+
+## fit univariate DLM
+dlm_1 <- MARSS(dat, inits = inits_list, model = mod_list)
+```
+
+```{r dlm1_forecast}
+# Forecast the additional two years
+forecast_df <- forecast(dlm_1, h = 2, type = "ytT", interval = "confidence")
+# Print the forecast results
+print(forecast_df)
+
+plot(forecast_df)
+
+forecast_df<- forecast_df$pred
+forecast_df$year <- 1964:2007
+forecast_df$index <- "Scheuerell and Williams (2005)"
+
+accuracy(dlm_1)
+
+# Define the logistic function
+logistic <- function(x) {
+  1 / (1 + exp(-x))
+}
+
+forecast_df_raw<-forecast_df%>% 
+  mutate(across(c(,3:9), ~plogis(.) * 100)) %>% 
+  rename("fore_CI_95_upper" = `Hi 95`,
+         "fore_CI_95_lower" = `Lo 95`) %>% 
+  mutate(year = 1964:2007,
+         sar.method = "Scheuerell and Williams (2005)",
+         index = "CUI", 
+         rear_type = "Natural-origin",
+         pass_type = "All") %>% 
+  inner_join(df.CUI, by = "year") 
+
+# #Check sd
+# # Print the mean and standard deviation of the original standardized CUI data
+# print(mean(CUI_z))
+# print(sd(CUI_z))
+# 
+# # Print the mean and standard deviation of the new standardized CUI data
+# print(mean(new_CUI_z))
+# print(sd(new_CUI_z))
+# 
+# # Combine the original and new standardized CUI data
+# combined_CUI_z <- c(CUI_z, new_CUI_z)
+# 
+# # Print the mean and standard deviation of the combined standardized CUI data
+# print(mean(combined_CUI_z))
+# print(sd(combined_CUI_z))
+
+```
+
+
+#### CUTI
+```{r CUTI}
+# Get information about the erdCUTI dataset
+info <- info(datasetid = "erdCUTImonthly", url = url)
+
+
+# Download the dataset
+dat <- griddap(info,
+               time = c("1988-01-15T00:00:00Z", "2024-02-15T00:00:00Z"), #currently pulling all data to date
+               latitude = c(45,45)
+)
+
+
+df.CUTI<-dat$data %>% 
+  mutate(time.day = lubridate::ymd_hms(time),
+         year = year(time.day),
+         month = month(time.day),
+         day = day(time.day)) %>% 
+  filter(month == 4) %>% 
+  select(year, CUTI)  
+
+  
+```
+
+```{r dlm1CUTI_model}
+## load the data
+data(SalmonSurvCUI, package = "MARSS")
+
+SalmonSurvCUTI<-SalmonSurvCUI %>% 
+  filter(between(year, 1988, 2005))
+
+## get time indices
+years <- SalmonSurvCUTI[, 1]
+## number of years of data
+TT <- length(years)
+## get response variable: logit(survival)
+dat <- matrix(SalmonSurvCUTI[,2], nrow = 1)
+
+## get predictor variable: CUTI
+CUTI<-df.CUTI %>% filter(between(year, min(year),2005))
+
+CUTI <- CUTI[,3]
+
+## ## ## z-score the CUI
+CUTI_z <- matrix((CUTI - mean(CUTI)) / sqrt(var(CUTI)), nrow = 1)
+
+## number of regr params (slope + intercept) = 2 
+m <- dim(CUTI_z)[1] + 1
+
+### build DLM
+
+## for process eqn
+B <- diag(m)                        ## 2x2; Identity
+U <- matrix(0, nrow = m, ncol = 1)  ## 2x1; both elements = 0
+Q <- matrix(list(0), m, m)          ## 2x2; all 0 for now
+diag(Q) <- c("q.alpha", "q.beta")   ## 2x2; diag = (q1,q2)
+
+## for observation eqn
+Z <- array(NA, c(1, m, TT))  ## NxMxT; empty for now
+Z[1,1,] <- rep(1, TT)        ## Nx1; 1's for intercept
+Z[1,2,] <- CUTI_z             ## Nx1; predictor variable
+A <- matrix(0)               ## 1x1; scalar = 0
+R <- matrix("r")             ## 1x1; scalar = r
+
+## only need starting values for regr parameters
+inits_list <- list(x0 = matrix(c(0, 0), nrow = m))
+
+## list of model matrices & vectors
+mod_list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
+
+
+### fit DLM
+
+## fit univariate DLM
+dlm_1_CUTI <- MARSS(dat, inits = inits_list, model = mod_list)
+```
+
+```{r dlm1CUTI_forecast}
+# Forecast the additional two years
+forecastCUTI_df <- forecast(dlm_1_CUTI, h = 2, type = "ytT", interval = "confidence")
+# Print the forecast results
+print(forecastCUTI_df)
+
+plot(forecastCUTI_df)
+
+
+accuracy(dlm_1_CUTI)
+
+
+forecastCUTI_df_raw<-forecastCUTI_df%>% 
+  mutate(across(c(,3:9), ~plogis(.) * 100)) %>% 
+  rename("fore_CI_95_upper" = `Hi 95`,
+         "fore_CI_95_lower" = `Lo 95`) %>% 
+  mutate(year = 1988:2007,
+         sar.method = "Scheuerell and Williams (2005)",
+         index = "CUTI", 
+         rear_type = "Natural-origin",
+         pass_type = "All") %>% 
+  inner_join(df.CUTI, by = "year") %>% 
+  rename("upwelling_index" = CUTI)
+
+```
+
+
+
+
+
+### DART SAR 
+```{r}
+#qlogis
+Logit <- function(x) {
+  log( x / (1 - x))
+}
+
+#plogis
+invLogit <- function(x) {
+  1 / ( 1 + exp(-x))
+}
+
+
+#check
+df.cbr %>% 
+  select(year, meanSAR) %>% 
+  mutate( logit.s = qlogis(meanSAR/100), 
+          log.transf = plogis(logit.s)*100) 
+
+
+SalmonSurvCUI %>% 
+  mutate(trans = plogis(logit.s)*100)
+```
+
+#### CUI
+```{r CUI_2023}
+### ERDAPP, NOAA upwelling indice CUI
+
+
+# Set the URL of the ERDDAP server
+url <- "https://upwell.pfeg.noaa.gov/erddap/"
+
+# Get information about the erdCUTI dataset
+info <- info(datasetid = "erdUI45mo", url = url)
+
+# Download the dataset
+dat <- griddap(info,
+               time = c("1964-01-01T00:00:00Z", "2024-02-15T00:00:00Z"), #currently pulling all data to date (adjust as needed)
+               latitude = c(45,45)
+)
+
+# format time and lat/long
+df.CUI<-dat$data %>% 
+  mutate(time.day = lubridate::ymd_hms(time),
+         year = year(time.day),
+         month = month(time.day),
+         day = day(time.day), 
+         adjlong = longitude-360) #set to -180 to 180
+
+## only include april CUI from ERDAPP data (for now)
+df.CUI<-df.CUI %>% 
+  filter(month == 4) %>% 
+  select(year, upwelling_index) 
+```
+
+```{r dlm2_model}
+df.cbr<-read.csv(here::here("data-raw/SAR", "LGRtoLGA_allpass_W_spsu_ch.csv"))
+df.cbr<-df.cbr[-c(24:31),] #drop CBR 
+df.cbr <-  df.cbr %>% mutate(year = as.integer(year)) %>%   filter( between(year, 2002, 2021)) #2021 does not have ocean4 reported--keep to 2020?
+
+df.cbr<-df.cbr %>% 
+  select(year, meanSAR) %>% 
+  mutate( logit.s = qlogis(meanSAR/100)) %>% #must divide meanSAR /100 to get 0 to 1 and then apply logit/transform
+  select(-meanSAR) %>% 
+  inner_join(df.CUI, by = "year") %>% 
+  rename("CUI.apr" = upwelling_index) 
+
+years <- df.cbr[, 1]
+TT <- length(years)
+## get response variable: logit(survival)
+dat <- matrix(df.cbr[,2], nrow = 1)
+  
+
+## get predictor variable
+CUI <- df.cbr[,3]
+## z-score the CUI
+CUI_z <- matrix((CUI - mean(CUI)) / sqrt(var(CUI)), nrow = 1)
+
+mean(CUI_z)
+sd(CUI_z)
+
+## number of regr params (slope + intercept)
+m <- dim(CUI_z)[1] + 1
+
+
+## for process eqn
+B <- diag(m)                        ## 2x2; Identity 
+U <- matrix(0, nrow = m, ncol = 1)  ## 2x1; both elements = 0 
+Q <- matrix(list(0), m, m)          ## 2x2; all 0 for now 
+diag(Q) <- c("q.alpha", "q.beta")   ## 2x2; diag = (q1,q2) 
+
+
+## for observation eqn
+Z <- array(NA, c(1, m, TT))  ## NxMxT; empty for now
+Z[1,1,] <- rep(1, TT)        ## Nx1; 1's for intercept
+Z[1,2,] <- CUI_z             ## Nx1; predictor variable
+A <- matrix(0)               ## 1x1; scalar = 0
+R <- matrix("r")             ## 1x1; scalar = r
+
+
+## only need starting values for regr parameters --how to do for categorical? switched index to 0 1
+inits_list <- list(x0 = matrix(c(0, 0), nrow = m))
+
+## list of model matrices & vectors
+mod_list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
+
+## fit univariate DLM
+dlm_2 <- MARSS(dat, inits = inits_list, model = mod_list)
+
+```
+
+#### CUTI
+
+```{r dlm2CUTI_model}
+df.cbr<-read.csv(here::here("data-raw/SAR", "LGRtoLGA_allpass_W_spsu_ch.csv"))
+df.cbr<-df.cbr[-c(24:31),] #drop CBR 
+df.cbr <-  df.cbr %>% mutate(year = as.integer(year)) %>%   filter( between(year, 2002, 2021)) #2021 does not have ocean4 reported--keep to 2020?
+
+df.cbr<-df.cbr %>% 
+  select(year, meanSAR) %>% 
+  mutate( logit.s = qlogis(meanSAR/100)) %>% #must divide meanSAR /100 to get 0 to 1 and then apply logit/transform
+  select(-meanSAR) %>% 
+  inner_join(df.CUTI, by = "year") 
+
+
+years <- df.cbr[, 1]
+TT <- length(years)
+## get response variable: logit(survival)
+dat <- matrix(df.cbr[,2], nrow = 1)
+  
+
+## get predictor variable
+CUTI <- df.cbr[,3]
+## z-score the CUI
+CUTI_z <- matrix((CUTI - mean(CUTI)) / sqrt(var(CUTI)), nrow = 1)
+
+mean(CUI_z)
+sd(CUI_z)
+
+## number of regr params (slope + intercept)
+m <- dim(CUI_z)[1] + 1
+
+
+## for process eqn
+B <- diag(m)                        ## 2x2; Identity 
+U <- matrix(0, nrow = m, ncol = 1)  ## 2x1; both elements = 0 
+Q <- matrix(list(0), m, m)          ## 2x2; all 0 for now 
+diag(Q) <- c("q.alpha", "q.beta")   ## 2x2; diag = (q1,q2) 
+
+
+## for observation eqn
+Z <- array(NA, c(1, m, TT))  ## NxMxT; empty for now
+Z[1,1,] <- rep(1, TT)        ## Nx1; 1's for intercept
+Z[1,2,] <- CUI_z             ## Nx1; predictor variable
+A <- matrix(0)               ## 1x1; scalar = 0
+R <- matrix("r")             ## 1x1; scalar = r
+
+
+## only need starting values for regr parameters --how to do for categorical? switched index to 0 1
+inits_list <- list(x0 = matrix(c(0, 0), nrow = m))
+
+## list of model matrices & vectors
+mod_list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
+
+## fit univariate DLM
+dlm_2_CUTI <- MARSS(dat, inits = inits_list, model = mod_list)
+
+```
+
+
+```{r dlm2CUTI_forecast}
+
+# Forecast the additional two years
+forecast2CUTI_df <- forecast(dlm_2_CUTI, h = 2, type = "ytT", interval = "confidence")
+# Print the forecast results
+print(forecast2CUTI_df)
+accuracy(dlm_2)
+
+plot(forecast2CUTI_df)
+
+forecast2CUTI_df<-forecast2CUTI_df$pred
+
+
+forecast2CUTI_df_raw<-forecast2CUTI_df%>% 
+  mutate(across(c(,3:9), ~plogis(.) * 100)) %>% 
+  rename("fore_CI_95_upper" = `Hi 95`,
+         "fore_CI_95_lower" = `Lo 95`) %>% 
+  mutate(year = 2002:2023,
+         sar.method = "DART",
+         index = "CUTI", 
+         rear_type = "Natural-origin",
+         pass_type = "All") %>% 
+  inner_join(df.CUTI, by = "year") %>% 
+    rename("upwelling_index" = CUTI)
+
+```
+
+###
+```{r}
+plot_data_1 <- rbind(forecast_df_raw, forecast2_df_raw, forecastCUTI_df_raw, forecast2CUTI_df_raw) %>% 
+  select(year, upwelling_index, y, estimate, se, fore_CI_95_lower, fore_CI_95_upper,sar.method,index, rear_type, pass_type)
+
+#add to data/ folder 
+usethis::use_data(plot_data_1, overwrite = TRUE)
+
+```
+
+
+```{r single multivariate dlm}
+# Get the two response variables: logit(survival) for the two datasets
+dat1 <- matrix(df1.cbr[,2], nrow = 1)  # SAR dataset 1
+dat2 <- matrix(df2.cbr[,2], nrow = 1)  # SAR dataset 2
+dat <- rbind(dat1, dat2)  # Combine the two datasets into a 2xTT matrix
+
+# Get the predictor variable (CUI index)
+CUI <- df.cbr[,3]  # CUI index for the whole year range
+CUI_z <- matrix((CUI - mean(CUI)) / sqrt(var(CUI)), nrow = 1)  # Z-score the CUI index
+
+# Define the model matrices and vectors as before, but now Z is a 2xMxT array
+Z <- array(NA, c(2, m, TT))  # 2xMxT; empty for now
+Z[1,1,] <- rep(1, TT)  # 1's for intercept for the first response variable
+Z[1,2,] <- CUI_z  # Predictor variable for the first response variable
+Z[2,1,] <- rep(1, TT)  # 1's for intercept for the second response variable
+Z[2,2,] <- CUI_z  # Predictor variable for the second response variable
+
+# Fit the multivariate DLM
+dlm_2 <- MARSS(dat, inits = inits_list, model = mod_list)
+```
+

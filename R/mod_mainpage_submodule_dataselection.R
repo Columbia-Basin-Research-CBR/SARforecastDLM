@@ -17,9 +17,21 @@ mod_mainpage_submodule_dataselection_ui <- function(id){
         selectInput(
           inputId = ns("select_index"),
           label = "Select coastal index",
-          choices = unique(plot_data$index),
+          choices = unique(plot_data_1$index),
           selected = "CUI",
           multiple = FALSE
+        )
+      ),
+
+      # select sar.method
+      column(
+        width = 3,
+        selectInput(
+          inputId = ns("select_sar"),
+          label = "Select SAR method",
+          choices = unique(plot_data_1$sar.method),
+          selected = "Scheuerell and Williams (2005)",
+          multiple = TRUE
         )
       ),
 
@@ -30,7 +42,7 @@ mod_mainpage_submodule_dataselection_ui <- function(id){
           inputId = ns("select_rear"),
           label = "Select rear type(s)",
           choices = c("Both", "Hatchery-origin", "Natural-origin"),#unique(plot_data$rear_type),
-          selected = "Both",
+          selected = "Natural-origin",
           multiple = TRUE
         )
       ),
@@ -41,8 +53,8 @@ mod_mainpage_submodule_dataselection_ui <- function(id){
         selectInput(
           inputId = ns("select_pass"),
           label = "Select passage type(s)",
-          choices = c("Both", "Transported", "In-river"),#unique(plot_data$rear_type),
-          selected = "Both",
+          choices = c("All", "Transported", "In-river"),#unique(plot_data$rear_type),
+          selected = "All",
           multiple = TRUE
         )
       )
@@ -60,9 +72,10 @@ mod_mainpage_submodule_dataselection_server <- function(id){
     # reactive for index, reartype, and pass type selection to filter data used in plots
     filtered_data<- reactive({
 
-      plot_data %>%
+      plot_data_1 %>%
         dplyr::filter(
           index == input$select_index,
+          sar.method %in% c(input$select_sar),
           rear_type %in% c(input$select_rear),
           pass_type %in% c(input$select_pass)
         )
