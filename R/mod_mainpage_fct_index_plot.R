@@ -14,9 +14,13 @@ fct_index_plot <- function(data) {
     "CUTI" = "Coastal Upwelling Transport Index (CUTI),\n45N, monthly[April]\n(vertical volume transport m2 s-1)"
   )
 
+  data_mean <- data %>%
+    dplyr::group_by(year) %>%
+    dplyr::summarise(upwelling_index = mean(upwelling_index))
+
 
   plot <- plotly::plot_ly(
-    data = data,
+    data = data_mean,
     x = ~year,
     y = ~upwelling_index,
     type = "scatter",
@@ -43,3 +47,10 @@ fct_index_plot <- function(data) {
   )
   return(plot)
 }
+
+
+# p<-plot_data_1 %>%
+#   filter(sar.method == "DART",
+#          index == "CUTI"
+#           )
+# fct_index_plot(p)
