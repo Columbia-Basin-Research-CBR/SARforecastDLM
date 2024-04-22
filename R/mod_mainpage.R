@@ -69,14 +69,36 @@ mod_mainpage_ui <- function(id){
         fluidRow(
           column(
             width = 12,
-            shinyWidgets::sliderTextInput(
-              inputId = "year_select",
-              label = "Select year(s):",
-              choices = 1964:2005,
-              selected = 1964:2005,
-              from_min = 1974,
-              from_max = 2005
+            # sliderInput(inputId = ns("year_selected"),
+            #             label = "To adjust years included in forecast, select a year",
+            #             min = 1964,
+            #             max = 2005,
+            #             value = 2005,
+            #             step = 1,
+            #             sep = NULL,
+            #             round = TRUE,
+            #             ticks = FALSE,
+            #             animate = FALSE),
+            shinyWidgets::airYearpickerInput(
+              inputId = ns("year_selected"),
+              label = "To adjust years included in forecast, select a year",
+              minDate = 1964,
+              maxDate = 2005,
+              view = "years",
+              range = TRUE,
+              multiple = FALSE,
+              value = 2005,
+              width = "25%"
             ),
+            #shinyWidgets::shinyWidgetsGallery()
+            # shinyWidgets::sliderTextInput(
+            #   inputId = "year_select",
+            #   label = "Select year(s):",
+            #   choices = 1964:2005,
+            #   selected = 1964:2005,
+            #   from_min = 1974,
+            #   from_max = 2005
+            # ),
             plotly::plotlyOutput(outputId = ns("plot_forecast_1"))
           )
         )
