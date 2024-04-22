@@ -58,6 +58,28 @@ mod_mainpage_ui <- function(id){
            plotly::plotlyOutput(outputId = ns("plot_forecast"))
           )
         )
+      ),
+
+      shinydashboard::box(
+        width = 12,
+        status = "info",
+        collapsible = TRUE,
+        collapsed = FALSE,
+        title = "Model predictive accuracy based on year(s) of input data:",
+        fluidRow(
+          column(
+            width = 12,
+            shinyWidgets::sliderTextInput(
+              inputId = "year_select",
+              label = "Select year(s):",
+              choices = 1964:2005,
+              selected = 1964:2005,
+              from_min = 1974,
+              from_max = 2005
+            ),
+            plotly::plotlyOutput(outputId = ns("plot_forecast_1"))
+          )
+        )
       )
     )
   )
@@ -92,6 +114,11 @@ mod_mainpage_server <- function(id, data){
      output$plot_forecast <- plotly::renderPlotly({
       fct_forecast_plot(data = data())
     })
+
+
+     output$plot_forecast_1 <- plotly::renderPlotly({
+       fct_forecast_plot(data = data())
+     })
 
   })
 }
