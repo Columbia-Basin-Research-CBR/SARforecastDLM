@@ -17,41 +17,107 @@ Objective: allow user to select a year of interest that filters the original dat
 
 ex. user selects 1964 to 1980, those years are now the train data and the rest are used as new data for testing
 
+_base_plot_data: only includes S&W05 method now with wild, and all passage types? 
+SalmonSurv: append CUI and CUTI
+
+```{r}
+base_plot_data<-base_plot_data %>% 
+  rename("value" = "upwelling_index")
+
+usethis::use_data(base_plot_data, overwrite = TRUE)
+
+```
+
+
+
+
 ### `SalmonSurvCUI` data
+
+```{r}
+
+## load the data
+data(SalmonSurvCUI, package = "MARSS")
+
+#load CUTI
+# Set the URL of the ERDDAP server
+url <- "https://upwell.pfeg.noaa.gov/erddap/"
+
+# Get information about the erdCUTI dataset
+info <- info(datasetid = "erdCUTImonthly", url = url)
+
+
+# Download the dataset
+dat <- griddap(info,
+               time = c("1988-01-15T00:00:00Z", "2024-02-15T00:00:00Z"), #currently pulling all data to date
+               latitude = c(45,45)
+)
+
+
+df.CUTI<-dat$data %>% 
+  mutate(time.day = lubridate::ymd_hms(time),
+         year = year(time.day),
+         month = month(time.day),
+         day = day(time.day)) %>% 
+  filter(month == 4) %>% 
+  select(year, CUTI)  %>% 
+  rename(value = "CUTI") %>% 
+  mutate(index = "CUTI")
+
+df<-SalmonSurvCUI %>% 
+  select(year, logit.s)
+
+df.cuti<-df %>% inner_join( df.CUTI, by = "year")
+  
+#join data - returns year and sar repeated for cui and cuti
+sar_raw_data<- SalmonSurvCUI %>% 
+ rename("value" = CUI.apr) %>% 
+  mutate(index = "CUI") %>% 
+  bind_rows(df.cuti)
+
+usethis::use_data(sar_raw_data)
+  
+```
+
 
 #### CUI
 Includes data from 1964 to 2005. See [Scheuerell and Williams (2005)](https://onlinelibrary.wiley.com/doi/full/10.1111/j.1365-2419.2005.00346.x) for explanation of SAR for specific years. 
 ```{r}
+library(tidyverse)
+
+data<- sar_raw_data
+
+year_selected<-1995
+
+index_selected<-"CUI"
+```
 
 
-#split data test.train.full
-full_data<- SalmonSurvCUI %>% 
- rename("value" = CUI.apr) %>% 
-  mutate(index = "CUI")
+```{r function}
+fct_compare_model_years<-function(data, years_selected, index_selected){
 
-fct_year<-function(data, years_selected = 2000, index_selected = "CUI"){
-
-full_data<- data
+full_data<- data %>% 
+  dplyr::filter(between(year, min(year), 2005),
+                index == index_selected)
 
 train_data<- full_data %>%
-  dplyr::filter(between(year, 1964, max(years_selected)), 
+  dplyr::filter(between(year, min(year),max(years_selected)), 
                 index == index_selected) 
 
-test_data<- full_data %>%
-dplyr::filter(between(year, max(years_selected)+1, 2005),
-              index == index_selected) 
+# test_data<- full_data %>%
+# dplyr::filter(between(year,2000 +1, 2005),#max(years_selected)
+#               index == "CUI")#index_selected) 
   
 ## get time indices
-years <- train_data[, 1]
+years <- train_data$year
 ## number of years of data
 TT <- length(years)
 ## get response variable: logit(survival)
-dat <- matrix(train_data[,2], nrow = 1)
+dat <- matrix(train_data$logit.s, nrow = 1)
 
-## get predictor variable: CUI
-index <- full_data[,3]
+## get predictor variable
+index <- full_data$value
 
-## ## ## z-score the CUI
+## ## ## z-score the upwelling index
 index_z <- matrix((index - mean(index)) / sqrt(var(index)), nrow = 1)
 
 index_z_train <- index_z[1:TT]
@@ -108,30 +174,25 @@ forecast_df_raw<-forecast_df_pred%>%
   mutate(across(c(,3:9), ~plogis(.) * 100)) %>% 
   rename("fore_CI_95_upper" = `Hi 95`,
          "fore_CI_95_lower" = `Lo 95`) %>% 
-  mutate(year = 1964:(years_selected+3),
-         index = "CUI", 
+  mutate(year = (min(years):max(years+3)),
+         index = index_selected,
          sar.method = "Scheuerell and Williams (2005)",
          dataset = "select_forecast",
          rear_type = "Natural-origin",
          pass_type = "All") %>% 
-  inner_join(select(full_data, value, year), by = "year") %>% 
+  inner_join(select(full_data, value, year), by = "year") %>% ##join index value
   select(year, value, y, estimate, se, fore_CI_95_lower, fore_CI_95_upper,sar.method,index, rear_type, pass_type, dataset)
 
 
 return(forecast_df_raw)
 }
+```
 
-df_raw<-fct_year(data = full_data)
 
+```{r run_function}
+df_raw<-fct_compare_model_years(data = data, years_selected = year_selected, index_selected = index_selected)
 
-base_data<-plot_data_1 %>% 
-  filter(sar.method == "Scheuerell and Williams (2005)", 
-         index == "CUI") %>% 
-  rename("value" = upwelling_index) %>% 
-  mutate(dataset = "base_data")
-  
-
-fct_forecast_compare_plot(data = df_raw, data_1 = base_data)
+fct_forecast_compare_plot(data_base = base_plot_data, data_select = df_raw, years_selected = year_selected)
 
 ```
 

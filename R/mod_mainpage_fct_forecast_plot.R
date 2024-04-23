@@ -15,12 +15,12 @@ fct_forecast_plot <- function(data) {
   data_list <- split(data, data$sar.method)
 
   # Define colors for different sar.methods
-  colors <- c("Scheuerell and Williams (2005)" = "#024c63", "DART" = "#b47747")
+  colors <- c("Scheuerell and Williams (2005)" = "#024c63") # "DART" = "#b47747"
 
   # Define rectangle parameters for different sar.methods
   rectangle_params <- list(
-    "Scheuerell and Williams (2005)" = list(x = c(2005, 2007, 2007, 2005), y = c(0, 0, 6.5, 6.5)),
-    "DART" = list(x = c(2021, 2024, 2024, 2021), y = c(0, 0, 6.5, 6.5)) # Replace "sar.method2" with the actual second sar.method
+    "Scheuerell and Williams (2005)" = list(x = c(2005, 2007, 2007, 2005), y = c(0, 0, 6.5, 6.5))
+    # "DART" = list(x = c(2021, 2024, 2024, 2021), y = c(0, 0, 6.5, 6.5)) # Replace "sar.method2" with the actual second sar.method
   )
 
   # Add traces for each sar.method

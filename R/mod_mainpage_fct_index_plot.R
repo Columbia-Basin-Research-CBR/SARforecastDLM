@@ -14,15 +14,15 @@ fct_index_plot <- function(data) {
     "CUTI" = "Coastal Upwelling Transport Index (CUTI),\n45N, monthly[April]\n(vertical volume transport m2 s-1)"
   )
 
-  data_mean <- data %>%
-    dplyr::group_by(year) %>%
-    dplyr::summarise(upwelling_index = mean(upwelling_index))
+  # data_mean <- data %>%
+  #   dplyr::group_by(year) %>%
+  #   dplyr::summarise(value = mean(value))
 
 
   plot <- plotly::plot_ly(
-    data = data_mean,
+    data = data,
     x = ~year,
-    y = ~upwelling_index,
+    y = ~value,
     type = "scatter",
     mode = "lines+markers",
     marker = list(color = "#024c63"),
