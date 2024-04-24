@@ -12,7 +12,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
   p_plotly <- plotly::plot_ly()
 
   data_base <-data_base %>%
-    dplyr::filter(between(year, min(year), 2005))
+    dplyr::filter(dplyr::between(year, min(year), 2005))
 
   # Split data by sar.method
   data<-rbind(data_base, data_select)
@@ -27,6 +27,24 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
     "select_forecast" = list(x = c(years_selected, years_selected+3, years_selected+3, years_selected), y = c(0, 0, 6.5, 6.5)) #adjust 3 to whatever # is predicted
     # "base_forecast" = list(x = c(2005, 2007, 2007, 2005), y = c(0, 0, 6.5, 6.5)) # Replace "sar.method2" with the actual second sar.method
   )
+
+  # Create a plotly plot
+  p_plotly <- plotly::plot_ly()
+
+
+  # Add "Observed SAR" plot
+  p_plotly <- p_plotly %>%
+    plotly::add_markers(
+      data = data_list[["base_forecast"]],
+      x = ~year,
+      y = ~y,
+      name = "Observed SAR",
+      legendgroup = "observed",
+      legendrank = 1,
+      text = ~ paste("Year of ocean entry:", year, "<br>Observed SAR (%):", custom_round(y)),
+      hoverinfo = "text",
+      marker = list(color = "#024c63", symbol = "circle-open")
+    )
 
   # Add traces for each sar.method
   for(i in seq_along(data_list)) {
@@ -43,33 +61,34 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         fillcolor = color,
         line = list(width = 0),
         opacity = 0.2,
-        name = paste("Forecasted,\nout-of-sample -", names(data_list[i])),
+        name = "Forecasted SAR,\nout-of-sample",
         legendgroup = paste("forecasted2", i),
         legendrank = 3,
         type = "scatter",
         mode = "none",
         hoverinfo = "none"
       ) %>%
-      # add observed and predicted SAR lines and markers
-      plotly::add_markers(
-        data = data_base, #data_list[[i]],
-        x = ~year,
-        y = ~y,
-        name = "Observed SAR",
-        legendgroup = "observed",
-        legendrank = 1,
-        text = ~ paste("Year of ocean entry:", year, "<br>Observed SAR:", custom_round(y)),
-        hoverinfo = "text",
-        marker = list(color = "darkgrey", symbol = "circle-open")
-      ) %>%
+      # # add observed and predicted SAR lines and markers
+      # plotly::add_markers(
+      #   data =data_list[["base_forecast"]],
+      #   x = ~year,
+      #   y = ~y,
+      #   name = "Observed SAR",
+      #   legendgroup = "observed",
+      #   legendrank = 1,
+      #   text = ~ paste("Year of ocean entry:", year, "<br>Observed SAR (%):", custom_round(y)),
+      #   hoverinfo = "text",
+      #   marker = list(color = "darkgrey", symbol = "circle-open")
+      # ) %>%
       plotly::add_lines(
         data = data_list[[i]],
         x = ~year,
         y = ~estimate,
-        name = paste("Forecasted SAR -", names(data_list[i])),
+        name = ifelse(names(data_list[i]) == "base_forecast", "Forecasted SAR,\ninc. 1964:2005", paste("Forecasted SAR,\ninc. 1964:",max(data_select$year-3))),
+        legendgroup = paste("forecasted", i),
         legendgroup = paste("forecasted", i),
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR:", custom_round(estimate)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR (%):", custom_round(estimate)),
         hoverinfo = "text",
         line = list(color = color),
         hoverinfo = "text"
@@ -78,10 +97,10 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         data = data_list[[i]],
         x = ~year,
         y = ~estimate,
-        name = paste("Forecasted SAR -", names(data_list[i])),
+        name = ifelse(names(data_list[i]) == "base_forecast", "Forecast SAR,\ninc. 1964:2005 SAR", paste("Forecast SAR,\ninc. 1964:", max(data_select$year), "SAR")),
         legendgroup = paste("forecasted", i),
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR:", custom_round(estimate)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR (%):", custom_round(estimate)),
         hoverinfo = "text",
         marker = list(size = 6, color = color),
         showlegend = FALSE

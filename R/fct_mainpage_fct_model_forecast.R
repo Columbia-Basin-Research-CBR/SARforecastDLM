@@ -7,11 +7,11 @@
 fct_model_forecast<-function(data, years_selected, index_selected){
 
   full_data<- data %>%
-    dplyr::filter(between(year, min(year), 2005),
+    dplyr::filter(dplyr::between(year, min(year), 2005),
                   index == index_selected)
 
   train_data<- full_data %>%
-    dplyr::filter(between(year, min(year),max(years_selected)),
+    dplyr::filter(dplyr::between(year, min(year),max(years_selected)),
                   index == index_selected)
 
   # test_data<- full_data %>%
@@ -62,7 +62,7 @@ fct_model_forecast<-function(data, years_selected, index_selected){
   ### fit DLM
   set.seed(1234)
   ## fit univariate DLM
-  dlm_train <- MARSS(dat, inits = inits_list, model = mod_list)
+  dlm_train <- MARSS::MARSS(dat, inits = inits_list, model = mod_list)
 
 
   #pull indice with full data z score
@@ -74,7 +74,7 @@ fct_model_forecast<-function(data, years_selected, index_selected){
   Z_test[1,2,] <- index_z_test
 
   ## forecast
-  forecast_df<-forecast(dlm_train, h = 3, type = "ytT", interval = "confidence")
+  forecast_df<-MARSS::forecast(dlm_train, h = 3, type = "ytT", interval = "confidence")
 
   #extract forecast
   forecast_df_pred<- forecast_df$pred
@@ -82,17 +82,17 @@ fct_model_forecast<-function(data, years_selected, index_selected){
 
   #wrangle for plot
   forecast_df_raw<-forecast_df_pred%>%
-    mutate(across(c(,3:9), ~plogis(.) * 100)) %>%
-    rename("fore_CI_95_upper" = `Hi 95`,
+    dplyr::mutate(dplyr::across(c(,3:9), ~stats::plogis(.) * 100)) %>%
+    dplyr::rename("fore_CI_95_upper" = `Hi 95`,
            "fore_CI_95_lower" = `Lo 95`) %>%
-    mutate(year = (min(years):max(years+3)),
+    dplyr::mutate(year = (min(years):max(years+3)),
            index = index_selected,
            sar.method = "Scheuerell and Williams (2005)",
            dataset = "select_forecast",
            rear_type = "Natural-origin",
            pass_type = "All") %>%
-    inner_join(select(full_data, value, year), by = "year") %>% ##join index value
-    select(year, value, y, estimate, se, fore_CI_95_lower, fore_CI_95_upper,sar.method,index, rear_type, pass_type, dataset)
+    dplyr::inner_join(dplyr::select(full_data, value, year), by = "year") %>% ##join index value
+    dplyr::select(year, value, y, estimate, se, fore_CI_95_lower, fore_CI_95_upper,sar.method,index, rear_type, pass_type, dataset)
 
 
   return(forecast_df_raw)

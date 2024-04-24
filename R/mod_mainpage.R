@@ -11,7 +11,10 @@ mod_mainpage_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidRow(
-
+      shinyWidgets::chooseSliderSkin(
+        skin = "Flat", #"Shiny" "Modern"
+        color = "#024c63"
+      ),
       shinydashboard::box(
         width = 12,
         solidHeader = TRUE,
@@ -29,10 +32,10 @@ mod_mainpage_ui <- function(id){
                           collapsible = TRUE,
                           collapsed = FALSE,
 
-                          HTML("<p>Scheurell and Williams (2005) hypothesized that upwelling indices, specifically upwelling events in april prior to juveniles entering the ocean in May and June, could be used as a method to forecast salmon survival.
+                          HTML("<p>Scheurell and Williams (2005) hypothesized that upwelling indices, specifically upwelling events in April prior to juveniles entering the ocean in May and June, could be used as a method to forecast salmon survival.
                                Since publication, a new <a href = 'https://oceanview.pfeg.noaa.gov/products/upwelling/intro'> coastal upwelling transport index (CUTI)</a> has been developed that includes upwelling driven by changes in alongshore wind,
                                a feature not measured in the CUI, or Bakun Index.</p>
-                               <p>Select a upwelling indice from the drop down below to explore differences in the indices and any changes to the forecast of salmon survival using the smolt-to-adult (SAR) and methods outlined in Scheurell and Williams (2005).</p>
+                               <p>Select a upwelling indice from the drop down menu to explore differences in the indices and any changes to the forecast of salmon survival using the smolt-to-adult survival rate (SAR) and methods outlined in Scheurell and Williams (2005).</p>
                                "),
                           br(),
                           mod_mainpage_submodule_dataselection_ui("submodule_dataselection_1")
@@ -69,17 +72,17 @@ mod_mainpage_ui <- function(id){
         status = "info",
         collapsible = TRUE,
         collapsed = FALSE,
-        title = "Model forecast accuracy based on year(s) of input data:",
+        title = "Model forecast accuracy based on years of input data:",
         fluidRow(
             column(
               width = 3,
-              tags$style(HTML(".js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar {background:  #024c63}")), #change color of slider to match CBRtheme
               # Add a slider input for year selection
               uiOutput(ns("year_slider")),
               br(),
               # Add an action button to run the model
               actionButton(inputId = ns("run_model"),
                            label = "Run Model"),
+              htmlOutput(ns("notification_text")),
               br()
               ),
           column(
@@ -101,6 +104,56 @@ mod_mainpage_ui <- function(id){
 mod_mainpage_server <- function(id, data){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
+
+    # Reactive values to track whether the "Run Model" button has been clicked
+    model_run_clicked <- reactiveVal(FALSE)
+    model_run_once <- reactiveVal(FALSE)
+    model_run_text <- reactiveVal("")
+
+    # Observe changes in the "Run Model" button
+    observeEvent(input$run_model, {
+      # When the "Run Model" button is clicked, set model_run_clicked to TRUE
+      model_run_clicked(TRUE)
+      model_run_once(TRUE)
+
+      # Update the text to be displayed in output$selected_range
+      model_run_text(HTML(paste("<p>Model results for ",min_year(), "to", input$years_select, data()$index[1], " indice and SAR via Scheurell and Williams (2005).")))
+    })
+
+    # Observe changes in the slider and/or the coastal index select input
+    observeEvent(list(input$years_select, data()$index[1]), {
+      # When the slider or the coastal index select input is changed, set model_run_clicked to FALSE
+      model_run_clicked(FALSE)
+    }, ignoreInit = TRUE)
+
+    output$notification_text <- renderUI({
+      if (model_run_once() && !model_run_clicked()) {
+        return(HTML(
+          paste("<br>
+
+                <b>Model adjustments:</b> ",
+                "<ul>
+                <li> Year range:", min_year(), "-", input$years_select, "</li>
+                <li> Indice:", data()$index[1], "</li>
+                </ul>
+                Please click 'Run Model' again to see adjustments.")
+          )
+        )
+      } else {
+        return(NULL)
+      }
+    })
+
+    # Reactive text output for slider once used
+    output$selected_range <- renderUI({
+      if (!model_run_once()) {
+        HTML("Use the slider to select a year range to forecast SAR one-year ahead compared to all data years. Adjust the coastal index in the dropdown menu above.
+             <br>
+             Select 'Run Model' when ready. It may take a moment to load.")
+      } else {
+        model_run_text()
+      }
+    })
 
     # Generate dynamic index title
     output$dynamic_index_title <- shiny::renderUI({
@@ -140,7 +193,7 @@ mod_mainpage_server <- function(id, data){
      #reactive slider
      output$year_slider<- renderUI({
        sliderInput(inputId = ns("years_select"),
-                   label = "Select Year Range:",
+                   label = "Select year range:",
                    min = min_year(),
                    max = 2005,
                    value =  2000,
@@ -149,28 +202,10 @@ mod_mainpage_server <- function(id, data){
                    ticks = FALSE)
      })
 
-     # reactive value to track whether the "Run Model" button has been clicked
-     model_run_clicked <- reactiveVal(FALSE)
+     # Reactive value to store the data to be used in the forecast_1 plot
+     data_base <- reactiveVal()
 
-     observeEvent(input$run_model, {
-       # When the "Run Model" button is clicked, set model_run_clicked to TRUE
-       model_run_clicked(TRUE)
-     })
-
-
-     #reactive text output for slider once used
-     output$selected_range <- renderUI({
-
-       if (!model_run_clicked()) {
-         HTML("Use the slider to select a year range to forecast SAR one-year ahead compared to all data years. Adjust the coastal index in the dropdown menu above.
-              <br>
-              Select 'Run Model' when ready. It may take a moment to load.")
-       } else {
-         HTML(paste("<p>Current model selected: ",min_year(), "to", input$years_select), "SAR via Scheurell and Williams (2005) and ", data()$index[1], " indice")
-       }
-     })
-
-
+    #reactive to generate model and return plot
     model_run<- eventReactive(input$run_model, {
       # Ensure that input$years_select is set
       req(input$years_select)
@@ -179,8 +214,12 @@ mod_mainpage_server <- function(id, data){
        selected_years <- input$years_select
        selected_index <- data()$index[1]
 
-       print(selected_index)
-       print(selected_years)
+       # Select the data based on the selected index--used to prevent data_base to update without hitting run model first (remove if want to compare CUI and CUTI results)
+       if (selected_index == "CUI") {
+         data_base(data())
+       } else if (selected_index == "CUTI") {
+         data_base(data())
+       }
 
 
        # # Run the model
@@ -191,14 +230,14 @@ mod_mainpage_server <- function(id, data){
             selected_years = selected_years)
        })
 
-    output$plot_forecast_1 <- plotly::renderPlotly({
+      output$plot_forecast_1 <- plotly::renderPlotly({
       # Check if model_run is NULL (i.e., the model hasn't been run yet)
       if (is.null(model_run())) {
         return(NULL)
       }
 
       # If model_run is not NULL, plot the results
-      fct_forecast_compare_plot(data_base = data() , data_select = model_run()$df_forecast, years_selected = model_run()$selected_years)
+      fct_forecast_compare_plot(data_base = data_base() , data_select = model_run()$df_forecast, years_selected = model_run()$selected_years)
      })
 
   })
