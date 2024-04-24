@@ -130,7 +130,6 @@ mod_mainpage_server <- function(id, data){
       if (model_run_once() && !model_run_clicked()) {
         return(HTML(
           paste("<br>
-
                 <b>Model adjustments:</b> ",
                 "<ul>
                 <li> Year range:", min_year(), "-", input$years_select, "</li>
@@ -223,7 +222,7 @@ mod_mainpage_server <- function(id, data){
 
 
        # # Run the model
-       df_forecast<-fct_model_forecast(data = sar_raw_data, years_selected = selected_years, index_selected = selected_index)
+       df_forecast<-fct_forecast_model(data = sar_raw_data, years_selected = selected_years, index_selected = selected_index)
 
        # Return df_forecast and selected_years
        list(df_forecast = df_forecast,

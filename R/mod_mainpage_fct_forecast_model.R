@@ -4,7 +4,7 @@
 #' @return returns a dataframe with forecasted values (+3) using the input years
 #'
 #' @noRd
-fct_forecast_model<-function(data, years_selected, index_selected){
+fct_model_forecast<-function(data, years_selected, index_selected){
 
   full_data<- data %>%
     dplyr::filter(dplyr::between(year, min(year), 2005),
