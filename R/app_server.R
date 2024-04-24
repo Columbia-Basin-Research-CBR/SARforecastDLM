@@ -19,6 +19,7 @@ app_server <- function(input, output, session) {
     mod_mainpage_server("mainpage_1", data = filtered_data())
   })
 
-
+  #supplementary page
+  mod_supplementary_page_server("supplementary_page_1")
 
 }

@@ -16,7 +16,7 @@ mod_mainpage_submodule_dataselection_ui <- function(id){
         width = 3,
         selectInput(
           inputId = ns("select_index"),
-          label = "Select coastal index",
+          label = "To start, select an upwelling index",
           choices = unique(base_plot_data$index),
           selected = "CUI",
           multiple = FALSE

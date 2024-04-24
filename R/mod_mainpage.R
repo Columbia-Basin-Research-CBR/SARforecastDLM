@@ -31,12 +31,7 @@ mod_mainpage_ui <- function(id){
                           status = "info",
                           collapsible = TRUE,
                           collapsed = FALSE,
-
-                          HTML("<p>Scheurell and Williams (2005) hypothesized that upwelling indices, specifically upwelling events in April prior to juveniles entering the ocean in May and June, could be used as a method to forecast salmon survival.
-                               Since publication, a new <a href = 'https://oceanview.pfeg.noaa.gov/products/upwelling/intro'> coastal upwelling transport index (CUTI)</a> has been developed that includes upwelling driven by changes in alongshore wind,
-                               a feature not measured in the CUI, or Bakun Index.</p>
-                               <p>Select a upwelling indice from the drop down menu to explore differences in the indices and any changes to the forecast of salmon survival using the smolt-to-adult survival rate (SAR) and methods outlined in Scheurell and Williams (2005).</p>
-                               "),
+                          shiny::includeHTML(system.file("app/www/mod_mainpage_upwelling_text.html", package = "SARforecastDLM")),
                           br(),
                           mod_mainpage_submodule_dataselection_ui("submodule_dataselection_1")
                           ),
@@ -45,7 +40,7 @@ mod_mainpage_ui <- function(id){
         status = "info",
         collapsible = TRUE,
         collapsed = FALSE,
-        title = shiny::uiOutput(ns("dynamic_index_title")),
+        title = shiny::uiOutput(ns("dynamic_index_title_1")),
                           column(
                             width = 10,
                             offset = 1, # Centering the column
@@ -58,7 +53,7 @@ mod_mainpage_ui <- function(id){
         status = "info",
         collapsible = TRUE,
         collapsed = FALSE,
-        title = "One year ahead forecast:",
+        title = shiny::uiOutput(ns("dynamic_index_title_2")),
         fluidRow(
           column(
             width = 12,
@@ -155,7 +150,7 @@ mod_mainpage_server <- function(id, data){
     })
 
     # Generate dynamic index title
-    output$dynamic_index_title <- shiny::renderUI({
+    output$dynamic_index_title_1 <- shiny::renderUI({
       selected_index <- data()$index[1]  # Get selected index
 
       # Generate title based on selected index
@@ -164,7 +159,19 @@ mod_mainpage_server <- function(id, data){
                       "CUTI" = paste("Coastal Upwelling Transport Index: 1988 to 2023"),
                       "Pick an index")
 
-      shiny::HTML(title)  # Return title as HTML
+      shiny::HTML(title)
+    })
+
+    output$dynamic_index_title_2 <- shiny::renderUI({
+      selected_index <- data()$index[1]  # Get selected index
+
+      # Generate title based on selected index
+      title <- switch(selected_index,
+                      "CUI" = paste("One year ahead forecast with CUI: 1964 to 2005"),
+                      "CUTI" = paste("One year ahead forecast with CUTI: 1988 to 2005"),
+                      "Pick an index")
+
+      shiny::HTML(title)
     })
 
     #generate reactive plots

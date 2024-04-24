@@ -28,7 +28,7 @@ app_ui <- function(request) {
             id = "tabs",
             shinydashboard::menuItem("Welcome", tabName = "welcome", icon = icon("house")),
             shinydashboard::menuItem("Forecast Survival", tabName = "figs", icon = icon("chart-line")),
-            shinydashboard::menuItem("Background Information", tabName = "bkg", icon = icon("book"))
+            shinydashboard::menuItem("Supplementary Information", tabName = "bkg", icon = icon("book"))
           )
         ),
 
@@ -42,7 +42,7 @@ app_ui <- function(request) {
           shinydashboard::tabItems(
             shinydashboard::tabItem(tabName = "welcome",mod_welcome_page_ui("welcome_page_ui_1")),
             shinydashboard::tabItem(tabName = "figs", mod_mainpage_ui("mainpage_1")),
-            shinydashboard::tabItem(tabName = "bkg")
+            shinydashboard::tabItem(tabName = "bkg", mod_supplementary_page_ui("supplementary_page_1"))
           )
         )
       )

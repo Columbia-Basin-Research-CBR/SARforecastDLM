@@ -22,41 +22,24 @@ mod_welcome_page_ui <- function(id){
              </em>")
       )
     ),
-    #add leaflet map
-    mod_welcome_submodule_leaflet_map_ui("leaflet_map_1"),
 
     fluidRow(
       shinydashboard::box(
         title = "What does this application do?",
-        width = 6,
+        width = 12,
         solidHeader = TRUE,
         status = "primary",
-        div(
-          HTML("<p>This application can be used to explore one-year ahead forecasted spring/summer Chinook salmon, <em>Oncorhynchus tshawytscha</em>, survival based on changes in ocean survival from indices of coastal ocean upwelling (CUI)(Figure 1).</p>
-                 <p>Please note that this Shiny App is dependent on data availability and serves as an exploratory tool.
-                 </p>")
+        column(
+          width = 8,
+          shiny::includeHTML(system.file("app/www/mod_welcome_application_intro_text.html", package = "SARforecastDLM"))
+        ),
+        column(
+          width = 4,
+          tags$img(src="www/mod_welcome_image_AdobeStock_75046304.jpeg",  style = "width: 100%; height: auto")#; max-height: 500px; object-fit: contain;
         )
-      ),
-      shinydashboard::box(
-        title = "How to use this application?",
-        width = 6,
-        solidHeader = TRUE,
-        status = "primary",
-        HTML("
-                 <div style='text-align: left;'>
-                  <p>This <b>SARforecastDLM</b> is an interactive query tool to explore patterns of spring/summer-run Chinook Salmon....:
-                 </p>
-                    <div style='text-align: center; margin: auto;'>
-                    <ul style='display: inline-block; text-align: left;'>
-                     <li><b>Smolt- to- adult ratio (SAR):</b> ..</li>
-                     <li><b>Upwelling Indices:</b> ...</li>
-                     </li>
-                 </ul>
-                 </div>
-                 </div>")
+        )
       )
     )
-  )
 }
 
 
@@ -66,9 +49,6 @@ mod_welcome_page_ui <- function(id){
 mod_welcome_page_server <- function(id){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
-
-    mod_welcome_submodule_leaflet_map_server("leaflet_map_1")
-
 
   })
 }
