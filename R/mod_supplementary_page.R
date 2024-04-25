@@ -32,24 +32,24 @@ mod_supplementary_page_ui <- function(id){
 
     fluidRow(
       shinydashboard::box(
-        title = "Additional Information",
-        status = "info",
-        width = 12,
-        collapsible = TRUE,
-        collapsed = FALSE,
-        HTML("fill in additional information here"
-        )
-      )
-    ),
-
-    fluidRow(
-      shinydashboard::box(
         title = "References",
         status = "info",
         width = 12,
         collapsible = TRUE,
         collapsed = FALSE,
         shiny::includeHTML(system.file("app/www/mod_supplementary_references_text.html", package = "SARforecastDLM"))
+      )
+    ),
+
+    fluidRow(
+      shinydashboard::box(
+        title = "Additional Information",
+        status = "info",
+        width = 12,
+        collapsible = TRUE,
+        collapsed = FALSE,
+        HTML("All code featured in this Shiny application is made publically available through our organizations GitHub repository: <a href='https://github.com/Columbia-Basin-Research-CBR/SARforecastDLM'>Columbia-Basin-Research-CBR</a>"
+        )
       )
     ),
 
