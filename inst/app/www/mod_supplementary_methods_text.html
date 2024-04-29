@@ -1,10 +1,46 @@
+<head>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+
 <div style='text-align: left;'>
-<i>Study system data</i>
-<p>The data used per species, rear type, and covariate model include fish that were tagged with passive-integrated transponders (PIT) tags, data publicly available via ptagis.org. Data includes juveniles detected from 1993 to 2018 at Bonneville Dam (BON), the last dam prior to ocean entry. All fish (Steelhead and spring/summer Chinook) originated upstream of Lower Granite Dam (LGR), with a portion transported via barges from LGR to a release site below BON. Transportation designation was sourced via the DART transportation filter as described by Columbia Basin Research,  https://www.cbr.washington.edu/dart/metadata/pit. Juvenile-to-adult survival in this model is characterized as successful adult detection at LGR to best capture any straying that may have occurred during upstream migration.</p>
+<i>Study system and fish</i>
+<p>The study area of this application includes the migratory pathway of wild, Snake River spring/summmer Chinook salmon through the Lower Snake and Columbia River basin, including the Federal Columbia River Power System (FCRSP), Pacific Northwest, USA. This application uses 37 years of smolt-to-adult return rates from 1964 to 2005 provided via the MARSS R package that reflect the data reported in Scheuerell and Williams (2005) (Holmes et al 2014). In that time period, changes to operations within the FCRPS, including the addition of 3 upper dams, required adjustments to the method of reporting juvenile and adult counts to estimate abundances (counts from: Ice Harbor Dam (1964-1969), Lower Monumental Dam (1969), Little Goose Dam (1970-1974), Lower Granite Dam (1975 - 2005)). To see the specific methodolgies used to estimate smolt-return-rates reported, see Scheuerell and Williams (2005) and Williams et al. (2005) for explanation.</p>
+
+<i>Upwelling Indices</i>
+<p>Two indices of coastal upwelling are included within this application, the Pacific Coastal Upwelling Index (CUI), also known as the Bakun index, and the Coastal Upwelling Transport Index (CUTI), both made publically available via ERDAPP R package and data server on behalf of NOAA fisheries, Southwest Fisheries Science Center, Environmental Research Division. At the time of the Scheuerell and Williams (2005) publication, CUI was the most accurate indice of upwelling, whereas in 2000, the CUTI was released as an alternative to replace CUI, as an improved estimate of vertical transport for the Pacific West Coast, USA. This application includes the values reported in cubic meters of seawater per second per 100 m of coastline for the location 45&deg;N latitude and 125&deg;W longitude for both indices and were last accessed, April 30th, 2024. Scheuerell and Williams (2005), used a backward-stepwise regression analysis to determine significant months of correlation with salmon survival. April, September,and October were all found to be significant predictors and resulted in the best fit model. This application includes the months of April, September, and October for both indices as predictors.<i> pending, To be updated, however the application currently only features the month of April based on Applied Time Series Tutorial</i></p>
+
+
 <i>Model methods</i>
-<p>For the model covariates, the day-of-year (DOY) covariate was assigned based on outmigration detection at BON and represented the migration timing to the estuary and, subsequently, ocean entry. Similarly, river temperature WQM (℃) was assigned based on passage detection at BON using a 7-day right-aligned rolling mean. Each covariate modeled included the linear term (doy, temp) and a quadratic term (i.e., doy2 and temp2 ) to account for non-linear patterns.</p>
+<body>
+<p> A Dynamic Linear Model (DLM) was used to forecast salmon survival using marine indices. DLMs are state-space model that include time-varying parameters, which allows for short term forecasts to be generated for each time step. Such that the model relies on prior data to predict the year of interest in a one-year ahead forecast of salmon survival and relies on two equations, an observational equation (Eq. 1) and an evolution equation (Eq. 2). For the observational equation,</p>
+
+  \[
+  \begin{equation}
+  survival_t = \alpha_t + \beta_t x_t + v_t \text{ with } v_{t}\sim\,\text{N}(0,r), \tag{Eq. 1}\\
+  \end{equation}
+  \]
+
+  <p>At each successive time step, \(t\) the observed response, \(survival_t\), is fitted to a \(1 \times m\) vector for each predictor variable where \(m\) represents \(m \times 1\) regression parameters included plus an observational error term, \(v_t\). The predictor variable, \(\beta_t\), representing April, September, and October CUI or CUTI. This model includes both a random slope and intercept, therefore \(m\) includes two time-varying regression parameters,</p>
+
+  \[
+  \begin{align}
+  \alpha_t &= \alpha_{t-1} + w_{\alpha,t} \text{ with } w_{\alpha,t} \sim \,\text{N}(0,q_{\alpha})\tag{Eq. 1.1}\\
+  \beta_t &= \beta_{t-1} + w_{\beta,t} \text{ with } w_{\beta,t} \sim \,\text{N}(0,q_{\beta}) \tag{Eq. 1.2}.
+  \end{align}
+  \]
+
+  <p>Where the \(m \times 1\) vector of regression parameters is defined as \(\theta_t\) and evolves through time according to the first-order Markov process seen in the evolution equation:</p>
+
+  \[
+  \begin{equation}
+  \boldsymbol{\theta}_t = \mathbf{G}_t\boldsymbol{\theta}_{t-1} + \mathbf{w}_t \text{ with } \mathbf{w}_t \sim \,\text{MVN}(\mathbf{0},\mathbf{Q}) \tag{Eq. 2}\\
+  \end{equation}
+  \]
+
+  <p>where \(\mathbf{G}_t\) is the parameters evolution matrix, in this case,  an \(m \times m\) identity matrix that informs how the parameters, \(\boldsymbol{\theta}_{t-1}\), change through time. The system variance matrix, \(\mathbf{w}_t\), represents the evolution process error at time \(t\) (Pole et al. 1994). \(W_t\) is assumed to be multivariate normally distributed with mean 0 and covariance matrix \(\mathbf{Q}\), where \(\mathbf{Q} = \begin{bmatrix}q_\alpha& 0 \\ 0&q_\beta\end{bmatrix}\). </p>
+</body>
 
 </div>
 
-
-The underlying data used for this application was sourced via the MARSS R package and includes SAR values reported in Scheurell and Williams (2005) along with upwelling indices, Coastal Upwelling Indice (CUI) and Coastal Upwelling Transport Indice (CUTI) made publicly avialble through NOAA ERDAPP.

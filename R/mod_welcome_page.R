@@ -30,15 +30,27 @@ mod_welcome_page_ui <- function(id){
         solidHeader = TRUE,
         status = "primary",
         column(
-          width = 8,
+          width = 7,
           shiny::includeHTML(system.file("app/www/mod_welcome_application_intro_text.html", package = "SARforecastDLM"))
         ),
         column(
-          width = 4,
+          width = 5,
           tags$img(src="www/mod_welcome_image_AdobeStock_75046304.jpeg",  style = "width: 100%; height: auto")#; max-height: 500px; object-fit: contain;
         )
         )
+      ),
+
+    fluidRow(
+      shinydashboard::box(
+        title = "Overview",
+        width = 12,
+        solidHeader = TRUE,
+        collapsible = TRUE,
+        collapsed = TRUE,
+        status = "primary",
+        shiny::includeHTML(system.file("app/www/mod_welcome_overview_text.html", package = "SARforecastDLM"))
       )
+    )
     )
 }
 
