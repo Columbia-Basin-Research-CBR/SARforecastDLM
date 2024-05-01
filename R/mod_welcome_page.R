@@ -44,7 +44,7 @@ mod_welcome_page_ui <- function(id){
       shinydashboard::box(
         title = "Overview",
         width = 12,
-        solidHeader = TRUE,
+        solidHeader = FALSE,
         collapsible = TRUE,
         collapsed = TRUE,
         status = "primary",
