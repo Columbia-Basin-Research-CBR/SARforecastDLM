@@ -155,8 +155,8 @@ mod_mainpage_server <- function(id, data){
 
       # Generate title based on selected index
       title <- switch(selected_index,
-                      "CUI" = paste("Coastal Upwelling Index: 1964 to 2007"),
-                      "CUTI" = paste("Coastal Upwelling Transport Index: 1988 to 2007"),
+                      "CUI" = paste("Coastal Upwelling Index: 1964 to 2006"),
+                      "CUTI" = paste("Coastal Upwelling Transport Index: 1988 to 2006"),
                       "Pick an index")
 
       shiny::HTML(title)
@@ -167,8 +167,8 @@ mod_mainpage_server <- function(id, data){
 
       # Generate title based on selected index
       title <- switch(selected_index,
-                      "CUI" = paste("One year ahead forecast with CUI: 1964 to 2007"),
-                      "CUTI" = paste("One year ahead forecast with CUTI: 1988 to 2007"),
+                      "CUI" = paste("One year ahead forecast with CUI: 1964 to 2006"),
+                      "CUTI" = paste("One year ahead forecast with CUTI: 1988 to 2006"),
                       "Pick an index")
 
       shiny::HTML(title)

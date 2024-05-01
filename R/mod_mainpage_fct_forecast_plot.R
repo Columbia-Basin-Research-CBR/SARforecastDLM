@@ -15,7 +15,7 @@ fct_forecast_plot <- function(data) {
   color <- "#024c63"
 
   # Define rectangle parameters for Scheuerell and Williams (2005) method
-  rectangle_params <- list(x = c(2005, 2007, 2007, 2005), y = c(0, 0, 6.5, 6.5))
+  rectangle_params <- list(x = c(2005, 2006, 2006, 2005), y = c(0, 0, 6.5, 6.5))
 
   # Add "forecasted" rectangle
   p_plotly <- p_plotly %>%

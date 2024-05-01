@@ -155,7 +155,7 @@ dlm_train <- MARSS(dat, inits = inits_list, model = mod_list)
 
 
 #pull indice with full data z score
-index_z_test <- index_z[(TT+1):(TT+3)] #get 3 CUI ahead
+index_z_test <- index_z[(TT+1)] #get 3 CUI ahead
 
 #newdata z array
 Z_test <- array(NA, c(1, m, 3))  ## NxMxT; empty for now
@@ -163,7 +163,7 @@ Z_test[1,1,] <- rep(1, 3)        ## Nx1; 1's for intercept
 Z_test[1,2,] <- index_z_test
 
 ## forecast
-forecast_df<-forecast(dlm_train, h = 3, type = "ytT", interval = "confidence")
+forecast_df<-forecast(dlm_train, h = 1, type = "ytT", interval = "confidence")
 
 #extract forecast
 forecast_df_pred<- forecast_df$pred
@@ -174,7 +174,7 @@ forecast_df_raw<-forecast_df_pred%>%
   mutate(across(c(,3:9), ~plogis(.) * 100)) %>% 
   rename("fore_CI_95_upper" = `Hi 95`,
          "fore_CI_95_lower" = `Lo 95`) %>% 
-  mutate(year = (min(years):max(years+3)),
+  mutate(year = (min(years):max(years+1)),
          index = index_selected,
          sar.method = "Scheuerell and Williams (2005)",
          dataset = "select_forecast",
@@ -192,7 +192,9 @@ return(forecast_df_raw)
 ```{r run_function}
 df_raw<-fct_compare_model_years(data = data, years_selected = year_selected, index_selected = index_selected)
 
-fct_forecast_compare_plot(data_base = base_plot_data, data_select = df_raw, years_selected = year_selected)
+df_raw1<-fct_model_forecast(data = data, years_selected = year_selected, index_selected = index_selected)
+
+fct_forecast_compare_plot(data_base = base_plot_data, data_select = df_raw1, years_selected = year_selected)
 
 ```
 
