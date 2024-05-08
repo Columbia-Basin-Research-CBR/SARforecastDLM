@@ -35,33 +35,21 @@ mod_mainpage_ui <- function(id){
                           br(),
                           mod_mainpage_submodule_dataselection_ui("submodule_dataselection_1")
                           ),
-      shinydashboard::box(
-        width = 12,
-        status = "info",
-        collapsible = TRUE,
-        collapsed = FALSE,
-        title = shiny::uiOutput(ns("dynamic_index_title_1")),
-                          column(
-                            width = 10,
-                            offset = 1, # Centering the column
-                            plotly::plotlyOutput(outputId = ns("plot_index"),height = "50%")
-                          )
-                        ),
-
-      shinydashboard::box(
-        width = 12,
-        status = "info",
-        collapsible = TRUE,
-        collapsed = FALSE,
-        title = shiny::uiOutput(ns("dynamic_index_title_2")),
-        fluidRow(
-          column(
-            width = 12,
-           plotly::plotlyOutput(outputId = ns("plot_forecast"))
-          )
-        )
-      ),
-
+      # base plot - all years of data
+      # shinydashboard::box(
+      #   width = 12,
+      #   status = "info",
+      #   collapsible = TRUE,
+      #   collapsed = FALSE,
+      #   title = shiny::uiOutput(ns("dynamic_index_title_2")),
+      #   fluidRow(
+      #     column(
+      #       width = 12,
+      #      plotly::plotlyOutput(outputId = ns("plot_forecast"))
+      #     )
+      #   )
+      # ),
+      # Model forecast plot
       shinydashboard::box(
         width = 12,
         status = "info",
@@ -88,7 +76,20 @@ mod_mainpage_ui <- function(id){
             plotly::plotlyOutput(outputId = ns("plot_forecast_1"))
           )
         )
-      )
+      ),
+      #Index plot
+      shinydashboard::box(
+        width = 12,
+        status = "info",
+        collapsible = TRUE,
+        collapsed = FALSE,
+        title = shiny::uiOutput(ns("dynamic_index_title_1")),
+        column(
+          width = 10,
+          offset = 1, # Centering the column
+          plotly::plotlyOutput(outputId = ns("plot_index"),height = "50%")
+        )
+      ),
     )
   )
 }

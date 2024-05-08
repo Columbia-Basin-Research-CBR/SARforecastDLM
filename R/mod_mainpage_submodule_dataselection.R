@@ -10,53 +10,54 @@
 mod_mainpage_submodule_dataselection_ui <- function(id){
   ns <- NS(id)
   tagList(
+
     fluidRow(
       # select index (one only)
       column(
         width = 3,
         selectInput(
           inputId = ns("select_index"),
-          label = "To start, select an upwelling index",
+          label = "Select an upwelling index",
           choices = unique(base_plot_data$index),
           selected = "CUI",
           multiple = FALSE
         )
+      ),
+      # select sar.method
+      column(
+        width = 3,
+        selectInput(
+          inputId = ns("select_sar"),
+          label = "Select SAR method",
+          choices = unique(base_plot_data$sar.method),
+          selected = "Scheuerell and Williams (2005)",
+          multiple = TRUE
+        )
+      ),
+
+      #select rear_type
+      column(
+        width = 3,
+        selectInput(
+          inputId = ns("select_rear"),
+          label = "Includes rear type:",#"Select rear type(s)",
+          choices ="Natural-origin", #c("Both", "Hatchery-origin", "Natural-origin"),
+          selected = "Natural-origin",
+          multiple = TRUE
+        )
+      ),
+
+      #select pass_type
+      column(
+        width = 3,
+        selectInput(
+          inputId = ns("select_pass"),
+          label = "Includes passage types:", #"Select passage type(s)",
+          choices = "All", #c("All", "Transported", "In-river"),
+          selected = "All",
+          multiple = TRUE
+        )
       )
-      # # select sar.method
-      # column(
-      #   width = 3,
-      #   selectInput(
-      #     inputId = ns("select_sar"),
-      #     label = "Select SAR method",
-      #     choices = unique(plot_data_1$sar.method),
-      #     selected = "Scheuerell and Williams (2005)",
-      #     multiple = TRUE
-      #   )
-      # ),
-      #
-      # #select rear_type
-      # column(
-      #   width = 3,
-      #   selectInput(
-      #     inputId = ns("select_rear"),
-      #     label = "Select rear type(s)",
-      #     choices = c("Both", "Hatchery-origin", "Natural-origin"),#unique(plot_data$rear_type),
-      #     selected = "Natural-origin",
-      #     multiple = TRUE
-      #   )
-      # ),
-      #
-      # #select pass_type
-      # column(
-      #   width = 3,
-      #   selectInput(
-      #     inputId = ns("select_pass"),
-      #     label = "Select passage type(s)",
-      #     choices = c("All", "Transported", "In-river"),#unique(plot_data$rear_type),
-      #     selected = "All",
-      #     multiple = TRUE
-      #   )
-      # )
     )
   )
 }
@@ -73,10 +74,10 @@ mod_mainpage_submodule_dataselection_server <- function(id){
 
       base_plot_data %>%
         dplyr::filter(
-          index == input$select_index
-          # sar.method %in% c(input$select_sar),
-          # rear_type %in% c(input$select_rear),
-          # pass_type %in% c(input$select_pass)
+          index == input$select_index,
+          sar.method %in% c(input$select_sar),
+          rear_type %in% c(input$select_rear),
+          pass_type %in% c(input$select_pass)
         )
     })
 
@@ -93,3 +94,6 @@ mod_mainpage_submodule_dataselection_server <- function(id){
 
 ## To be copied in the server
 # mod_mainpage_submodule_dataselection_server("submodule_dataselection_1")
+
+
+

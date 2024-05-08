@@ -1,0 +1,173 @@
+---
+title: "AnotherMarkdownToCleanUp"
+output: html_document
+date: "2024-05-08"
+---
+
+Objective: Add back in removed code with different SAR methods, indices, and potentially passage type and rear type.
+
+Current plan: 
+SAR to include: Scheuerell and Williams (2005), CBR DART SAR, CJS estimated survival (Gosselin et al 2019?), and ?
+Indices to include: CUI (Bakun index), CUTI, BEUTI?, Northern Copepod Biomass Index
+Months to include: April
+Passage type to include: All- combined
+Rear type to include: Natural-origin
+
+
+```{r load_libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(MARSS)
+library(here)
+library(rerddap) #import data from ERDDAP
+```
+# Northern copepod biomass data: https://www.fisheries.noaa.gov/data-tools/newport-line-northern-copepod-biomass-data ; update with [NOAA](https://www.fisheries.noaa.gov/west-coast/science-data/local-biological-indicators#copepod-biodiversity) referenced data via [Hooff and Peterson, 2006](https://www.fisheries.noaa.gov/west-coast/science-data/local-biological-indicators#copepod-biodiversity); or ask jenn for where to source data
+```{r load_cope_data}
+
+#Northern copepod biomass data
+cope<-read_csv(here("data-raw", "northern_copepod_biomass_newportOR.csv")) 
+
+cope<-cope %>% 
+  filter(Month == 4) %>% 
+  group_by(Year) %>% 
+  summarise(value = mean(NORTHERN)) %>% 
+  select(Year, value) %>% 
+  mutate(index = "NCBI")
+
+#load existing sar_raw_data
+load(here("data", "sar_raw_data.rda")) #load existing data
+
+## load the salmon sar from MARSS
+data(SalmonSurvCUI, package = "MARSS")
+
+#extract sar and year
+df<-SalmonSurvCUI %>% 
+  select(year, logit.s)
+
+#join sar and year with copepod data
+df.cope<-df %>% inner_join( cope, by = c("year" = "Year"))
+  
+#join sar/cope data with existing sar_raw_data
+sar_raw_data_updated<- sar_raw_data %>% 
+  bind_rows(df.cope) %>% 
+  mutate(sar.method = "Scheuerell and Williams (2005)")
+
+```
+# Pull in additional years of CUI
+```{r}
+### ERDAPP, NOAA upwelling indice CUI
+# Set the URL of the ERDDAP server
+url <- "https://upwell.pfeg.noaa.gov/erddap/"
+
+# Get information about the erdCUTI dataset
+info <- info(datasetid = "erdUI45mo", url = url)
+
+# Download the dataset
+dat <- griddap(info,
+               time = c("1964-01-01T00:00:00Z", "2024-02-15T00:00:00Z"), #currently pulling all data to date (adjust as needed)
+               latitude = c(45,45)
+)
+
+# format time and lat/long
+df.CUI<-dat$data %>% 
+  mutate(time.day = lubridate::ymd_hms(time),
+         year = year(time.day),
+         month = month(time.day),
+         day = day(time.day), 
+         adjlong = longitude-360) #set to -180 to 180
+
+## only include april CUI from ERDAPP data (for now)
+df.CUI<-df.CUI %>% 
+  filter(month == 4) %>% 
+  select(year, upwelling_index) 
+```
+
+
+# pull in additional years of CUTI
+```{r}
+
+#load CUTI
+# Set the URL of the ERDDAP server
+#url <- "https://upwell.pfeg.noaa.gov/erddap/"
+
+# Get information about the erdCUTI dataset
+info <- info(datasetid = "erdCUTImonthly", url = url)
+
+
+# Download the dataset
+dat <- griddap(info,
+               time = c("1988-01-15T00:00:00Z", "2024-02-15T00:00:00Z"), #currently pulling all data to date
+               latitude = c(45,45)
+)
+
+
+df.CUTI<-dat$data %>% 
+  mutate(time.day = lubridate::ymd_hms(time),
+         year = year(time.day),
+         month = month(time.day),
+         day = day(time.day)) %>% 
+  filter(month == 4) %>% 
+  select(year, CUTI)  %>% 
+  rename(value = "CUTI") %>% 
+  mutate(index = "CUTI")
+
+
+
+df.cuti<-df %>% inner_join( df.CUTI, by = "year")
+  
+#join data - returns year and sar repeated for cui and cuti
+sar_raw_data<- SalmonSurvCUI %>% 
+ rename("value" = CUI.apr) %>% 
+  mutate(index = "CUI") %>% 
+  bind_rows(df.cuti)
+
+```
+
+
+# CBR SAR data
+```{r}
+df.cbr<-read_csv(here("data-raw/SAR", "LGRtoLGA_allpass_W_spsu_ch.csv"))
+df.cbr<-df.cbr[-c(24:31),] #drop CBR notes 
+df.cbr <-  df.cbr %>% mutate(year = as.integer(year)) %>%   filter( between(year, 2002, 2020)) #2021 does not have ocean4 reported--keep to 2020?
+
+
+df.cbr<-df.cbr %>% 
+  select(year, meanSAR) %>% 
+  mutate( logit.s = qlogis(meanSAR/100)) %>% #must divide meanSAR /100 to get 0 to 1 and then apply logit/transform
+  select(-meanSAR) 
+
+#CUI
+df.cbr.cui<-df.cbr %>% 
+  inner_join(df.CUI, by = "year") %>% 
+  rename("value" = upwelling_index)  %>%
+  mutate(index = "CUI",
+         sar.method = "DART")
+#CUTI
+df.cbr.cuti<-df.cbr %>% 
+  inner_join(df.CUTI, by = "year") %>% 
+  mutate(sar.method = "DART")
+
+#NCBI
+df.cbr.ncbi<-df.cbr %>% 
+  inner_join(cope, by = c("year"= "Year")) %>% 
+  mutate(sar.method = "DART")
+
+#join all indices
+df.cbr<-rbind(df.cbr.cui, df.cbr.cuti, df.cbr.ncbi) 
+
+
+#add to sar_raw_updated with DART sar method with CUI,CUTI, NCBI
+sar_raw_data_updated<-rbind(sar_raw_data_updated, df.cbr)
+```
+
+# CJS estimated survival
+
+
+
+
+# save updated sar_raw_data
+
+```{r}
+#save updated sar_raw_data
+usethis::use_data(sar_raw_data_updated, overwrite = TRUE)
+```
+ 
