@@ -48,7 +48,7 @@ yr.group.phi <- cbind(matrix(rep(release_year, 3), ncol = 3), matrix(rep(return_
 yr.group.p <- cbind(matrix(rep(release_year, 3), ncol = 3), matrix(rep(return_year, 3), ncol = 3))
 
 
-cjs_HWRTCh_years_RT_221123_mac <- stan(file = here("Analysis", "stan", "CJS-marray-phiXRE-pXRE-fixNA.stan"),
+cjs_results <- stan(file = here("data-raw/SAR", "CJS-marray-phiXRE-pXRE-fixNA.stan"),
                                       data = list(T = reaches+1, M = nrow(DATAXm), K = NX+1,
                                                   X = covariates,
                                                   indX_phi = xphi.counter,
@@ -61,10 +61,10 @@ cjs_HWRTCh_years_RT_221123_mac <- stan(file = here("Analysis", "stan", "CJS-marr
                                       chains = 3, cores = 3, iter = 1500, warmup = 500,
                                       control = list(adapt_delta = 0.99, max_treedepth = 15), refresh=75 )
 
-save(cjs_HWRTCh_years_RT_221123_mac, file=here("Analysis", "results", "cjs_HWRTCh_years_RT_221123_mac.RData") )
-load(here("Analysis", "results", "cjs_HWRTCh_years_RT_221123_mac"))
+save(cjs_results, file=here("data-raw/SAR", "cjs_results.RData") )
+load(here("data-raw/SAR", "cjs_results"))
 
-print(cjs_HWRTCh_years_RT_221123_mac, pars = "beta", include = TRUE, prob = c(0.025,0.5,0.975))
+print(cjs_results, pars = "beta", include = TRUE, prob = c(0.025,0.5,0.975))
 
 
 
