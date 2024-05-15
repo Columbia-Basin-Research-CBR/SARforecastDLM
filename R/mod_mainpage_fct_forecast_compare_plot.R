@@ -12,7 +12,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
   p_plotly <- plotly::plot_ly()
 
   data_base <-data_base %>%
-    dplyr::filter(dplyr::between(year, min(year), 2005))
+    dplyr::filter(dplyr::between(year, min(year), max(year)))
 
   # Split data by sar.method
   data<-rbind(data_base, data_select)
@@ -24,7 +24,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
 
   # Define rectangle parameters
   rectangle_params <- list(
-    "select_forecast" = list(x = c(years_selected, years_selected+1, years_selected+1, years_selected), y = c(0, 0, 6.5, 6.5)) #adjust 3 to whatever # is predicted
+    "select_forecast" = list(x = c(years_selected, years_selected+1, years_selected+1, years_selected), y = c(0, 0, round(max(data$fore_CI_95_upper)), round(max(data$fore_CI_95_upper)))) #adjust 3 to whatever # is predicted
     # "base_forecast" = list(x = c(2005, 2007, 2007, 2005), y = c(0, 0, 6.5, 6.5)) # Replace "sar.method2" with the actual second sar.method
   )
 

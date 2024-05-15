@@ -116,7 +116,7 @@ mod_mainpage_server <- function(id, data){
       updateActionButton(session, "run_model", label = "Run Model", disabled = TRUE)
 
       # Update the text to be displayed in output$selected_range
-      model_run_text(HTML(paste("<p>Model results for ",min_year(), "to", input$years_select, data()$index[1], " indice and SAR via Scheurell and Williams (2005).")))
+      model_run_text(HTML(paste("<p>Model results for ",min_year(), "to", input$years_select, data()$index[1], " indice and ",  data()$sar.method[1], " SAR method.")))
     })
 
     # Observe changes in the slider and/or the coastal index select input
@@ -228,9 +228,9 @@ mod_mainpage_server <- function(id, data){
     })
 
 
-     output$plot_forecast <- plotly::renderPlotly({
-      fct_forecast_plot(data = data())
-    })
+    #  output$plot_forecast <- plotly::renderPlotly({
+    #   fct_forecast_plot(data = data())
+    # })
 
 
      # Reactive value to store the data to be used in the forecast_1 plot
@@ -244,17 +244,20 @@ mod_mainpage_server <- function(id, data){
        # Get the selected year range
        selected_years <- input$years_select
        selected_index <- data()$index[1]
+       selected_sar   <- data()$sar.method[1]
 
        # Select the data based on the selected index--used to prevent data_base to update without hitting run model first (remove if want to compare CUI and CUTI results)
        if (selected_index == "CUI") {
          data_base(data())
        } else if (selected_index == "CUTI") {
          data_base(data())
+       } else if (selected_index == "NCBI") {
+         data_base(data())
        }
 
 
        # # Run the model
-       df_forecast<-fct_forecast_model(data = sar_raw_data_updated, years_selected = selected_years, index_selected = selected_index)
+       df_forecast<-fct_forecast_model(data = sar_raw_data_updated, years_selected = selected_years, index_selected = selected_index, sar_method_selected = selected_sar)
 
        # Return df_forecast and selected_years
        list(df_forecast = df_forecast,

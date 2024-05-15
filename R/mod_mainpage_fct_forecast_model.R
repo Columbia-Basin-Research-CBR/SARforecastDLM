@@ -4,15 +4,17 @@
 #' @return returns a dataframe with forecasted values (+3) using the input years
 #'
 #' @noRd
-fct_forecast_model<-function(data, years_selected, index_selected){
+fct_forecast_model<-function(data, years_selected, index_selected, sar_method_selected){
 
   full_data<- data %>%
-    dplyr::filter(dplyr::between(year, min(year), 2005),
-                  index == index_selected)
+    dplyr::filter(dplyr::between(year, min(year), max(year)),
+                  index == index_selected,
+                  sar.method == sar_method_selected)
 
   train_data<- full_data %>%
     dplyr::filter(dplyr::between(year, min(year),max(years_selected)),
-                  index == index_selected)
+                  index == index_selected,
+                  sar.method == sar_method_selected)
 
   # test_data<- full_data %>%
   # dplyr::filter(between(year,2000 +1, 2005),#max(years_selected)
@@ -64,15 +66,6 @@ fct_forecast_model<-function(data, years_selected, index_selected){
   ## fit univariate DLM
   dlm_train <- MARSS::MARSS(dat, inits = inits_list, model = mod_list)
 
-
-  # #pull indice with full data z score
-  # index_z_test <- index_z[(TT+1)] #get 1 CUI ahead
-
-  # #newdata z array
-  # Z_test <- array(NA, c(1, m, 3))  ## NxMxT; empty for now
-  # Z_test[1,1,] <- rep(1, 3)        ## Nx1; 1's for intercept
-  # Z_test[1,2,] <- index_z_test
-
   ## forecast
   forecast_df<-MARSS::forecast(dlm_train, h = 1, type = "ytT", interval = "confidence")
 
@@ -87,7 +80,7 @@ fct_forecast_model<-function(data, years_selected, index_selected){
            "fore_CI_95_lower" = `Lo 95`) %>%
     dplyr::mutate(year = (min(years):max(years+1)),
            index = index_selected,
-           sar.method = "Scheuerell and Williams (2005)",
+           sar.method = sar_method_selected,
            dataset = "select_forecast",
            rear_type = "Natural-origin",
            pass_type = "All") %>%
