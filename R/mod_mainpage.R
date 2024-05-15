@@ -65,7 +65,7 @@ mod_mainpage_ui <- function(id){
               # Add an action button to run the model
               actionButton(inputId = ns("run_model"),
                            label = "Run Model"),
-              htmlOutput(ns("notification_text")),
+              htmlOutput(ns("notification_text")), #future addition look into tool-tip hover for this shinyBS::tooltip
               br()
               ),
           column(
@@ -112,75 +112,114 @@ mod_mainpage_server <- function(id, data){
       model_run_clicked(TRUE)
       model_run_once(TRUE)
 
+      # Disable the "Run Model" button - if nothing has been changed since last run
+      updateActionButton(session, "run_model", label = "Run Model", disabled = TRUE)
+
       # Update the text to be displayed in output$selected_range
       model_run_text(HTML(paste("<p>Model results for ",min_year(), "to", input$years_select, data()$index[1], " indice and SAR via Scheurell and Williams (2005).")))
     })
 
     # Observe changes in the slider and/or the coastal index select input
-    observeEvent(list(input$years_select, data()$index[1]), {
-      # When the slider or the coastal index select input is changed, set model_run_clicked to FALSE
+    observeEvent(list(input$years_select, data()$index[1], data()$sar.method[1]), {
+      # When the slider, index, or sar.method select input is changed, set model_run_clicked to FALSE
       model_run_clicked(FALSE)
+
+      # Enable the "Run Model" button once an input has changed
+      updateActionButton(session, "run_model", label = "Run Model", disabled = FALSE)
     }, ignoreInit = TRUE)
 
+
     output$notification_text <- renderUI({
-      if (model_run_once() && !model_run_clicked()) {
-        return(HTML(
-          paste("<br>
-                <b>Model adjustments:</b> ",
-                "<ul>
-                <li> Year range:", min_year(), "-", input$years_select, "</li>
-                <li> Indice:", data()$index[1], "</li>
-                </ul>
-                Please click 'Run Model' again to see adjustments.")
-          )
-        )
-      } else {
-        return(NULL)
-      }
+      HTML(paste("<div style='color: #b47747;'>",
+                 if (model_run_once() && !model_run_clicked()) {
+                   paste("<br>
+            <b>Model adjustments:</b> ",
+                         "<ul>
+            <li> Year range:", min_year(), "-", input$years_select, "</li>
+            <li> Indice:", data()$index[1], "</li>
+            <li> SAR method:", data()$sar.method[1], "</li>
+            </ul>
+            Please click 'Run Model' again to see adjustments.")
+                 } else if (model_run_clicked()) {
+                   "<br>Model has not changed, adjust parameters to re-run model."
+                 } else {
+                   NULL
+                 },
+                 "</div>")
+      )
     })
 
     # Reactive text output for slider once used
     output$selected_range <- renderUI({
       if (!model_run_once()) {
-        HTML("Use the slider to select a year range to forecast SAR one-year ahead compared to all data years. Adjust the coastal index in the dropdown menu above.
-             <br>
-             Select 'Run Model' when ready. It may take a moment to load.")
+        HTML("<ul>
+              <li>Based on the select inputs above, use the slider to select a year range to forecast SAR one-year ahead compared to all data years.</li>
+              <li>Select 'Run Model' when ready. It may take a moment to load.</li>
+             </ul>")
       } else {
         model_run_text()
       }
     })
 
-    # Generate dynamic index title
-    output$dynamic_index_title_2 <- shiny::renderUI({
+
+    # Reactive function to extract common variables for dynamic titles and slider
+    common_vars <- reactive({
       selected_index <- data()$index[1]  # Get selected index
       selected_sar <- data()$sar.method[1]  # Get selected method
-      min_year <- min(data()$year)  # Get minimum year
-      max_year <- max(data()$year)  # Get maximum year
+
+      # Filter data based on selected index and method
+      filtered_data <- data()[data()$index == selected_index & data()$sar.method == selected_sar, ]
+
+      # Calculate min and max year
+      min_year <- min(filtered_data$year, na.rm = TRUE)
+      max_year <- max(filtered_data$year, na.rm = TRUE)
+
+      # Return a list of the extracted variables
+      list(selected_index = selected_index, selected_sar = selected_sar, min_year = min_year, max_year = max_year)
+    })
+
+    # Reactive function for min_year
+    min_year <- reactive({
+      vars <- common_vars()  # Get the common variables
+      vars$min_year  # Return min_year
+    })
+
+    # Generate dynamic index title
+    output$dynamic_index_title_2 <- shiny::renderUI({
+      vars <- common_vars()  # Get the common variables
 
       # Generate title based on selected index, method, and year range
-      title <- paste("One year ahead forecast with", selected_index, "and", selected_sar, ":", min_year, "to", max_year)
+      title <- paste("One year ahead forecast with", vars$selected_index, "and", vars$selected_sar, ":", vars$min_year, "to", vars$max_year)
 
       shiny::HTML(title)
     })
 
     # Generate dynamic index title
     output$dynamic_index_title_1 <- shiny::renderUI({
-      selected_index <- data()$index[1]  # Get selected index
-      selected_sar <- data()$sar.method[1]  # Get selected method
-      # Filter data based on selected method
-      filtered_data <- data()[data()$sar.method == selected_sar, ]
-
-      min_year <- min(filtered_data$year)  # Get minimum year
-      max_year <- max(filtered_data$year)  # Get maximum y
+      vars <- common_vars()  # Get the common variables
 
       # Generate title based on selected index
-      title <- switch(selected_index,
-                      "CUI" = paste("Coastal Upwelling Index:", min_year, "to", max_year),
-                      "CUTI" = paste("Coastal Upwelling Transport Index:", min_year, "to", max_year),
-                      "NCBI" = paste("Northern Copepod Biomass Index:", min_year, "to", max_year),
+      title <- switch(vars$selected_index,
+                      "CUI" = paste("Coastal Upwelling Index:", vars$min_year, "to", vars$max_year),
+                      "CUTI" = paste("Coastal Upwelling Transport Index:", vars$min_year, "to", vars$max_year),
+                      "NCBI" = paste("Northern Copepod Biomass Index:", vars$min_year, "to", vars$max_year),
                       "Pick an index")
 
       shiny::HTML(title)
+    })
+
+    # Reactive slider
+    output$year_slider <- renderUI({
+      vars <- common_vars()  # Get the common variables
+
+      sliderInput(inputId = ns("years_select"),
+                  label = "Select year range:",
+                  min = vars$min_year,
+                  max = vars$max_year,
+                  value =   round((vars$min_year + vars$max_year) / 2),#select middle year between min/max
+                  step = 1,
+                  sep = "",
+                  ticks = FALSE)
     })
 
     #generate reactive plots
@@ -193,69 +232,6 @@ mod_mainpage_server <- function(id, data){
       fct_forecast_plot(data = data())
     })
 
-     # #reactive to update slider minimum value
-     # min_year <- reactive({
-     #   selected_index <- data()$index[1]  # Get selected index
-     #   if (selected_index == "CUI") {
-     #     return(1964)
-     #   } else if (selected_index == "CUTI") {
-     #     return(1988)
-     #   } else {
-     #     return(NA)
-     #   }
-     # })
-     #
-     # #reactive slider
-     # output$year_slider<- renderUI({
-     #   sliderInput(inputId = ns("years_select"),
-     #               label = "Select year range:",
-     #               min = min_year(),
-     #               max = 2005,
-     #               value =  2000,
-     #               step = 1,
-     #               sep = "",
-     #               ticks = FALSE)
-     # })
-
-     # Reactive function to calculate min year
-     min_year <- reactive({
-       selected_index <- data()$index[1]  # Get selected index
-       selected_sar <- data()$sar.method[1]  # Get selected method
-
-       # Filter data based on selected index and method
-       filtered_data <- data()[data()$index == selected_index & data()$sar.method == selected_sar, ]
-
-       # Calculate min year
-       min_year <- min(filtered_data$year, na.rm = TRUE)
-
-       return(min_year)
-     })
-
-     # Reactive function to calculate max year
-     max_year <- reactive({
-       selected_index <- data()$index[1]  # Get selected index
-       selected_sar <- data()$sar.method[1]  # Get selected method
-
-       # Filter data based on selected index and method
-       filtered_data <- data()[data()$index == selected_index & data()$sar.method == selected_sar, ]
-
-       # Calculate max year
-       max_year <- max(filtered_data$year, na.rm = TRUE)
-
-       return(max_year)
-     })
-
-     # Reactive slider
-     output$year_slider <- renderUI({
-       sliderInput(inputId = ns("years_select"),
-                   label = "Select year range:",
-                   min = min_year(),
-                   max = max_year(),
-                   value = round((min_year() + max_year()) / 2),#select middle year between min/max
-                   step = 1,
-                   sep = "",
-                   ticks = FALSE)
-     })
 
      # Reactive value to store the data to be used in the forecast_1 plot
      data_base <- reactiveVal()
@@ -278,7 +254,7 @@ mod_mainpage_server <- function(id, data){
 
 
        # # Run the model
-       df_forecast<-fct_forecast_model(data = sar_raw_data, years_selected = selected_years, index_selected = selected_index)
+       df_forecast<-fct_forecast_model(data = sar_raw_data_updated, years_selected = selected_years, index_selected = selected_index)
 
        # Return df_forecast and selected_years
        list(df_forecast = df_forecast,
