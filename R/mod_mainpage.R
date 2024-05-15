@@ -150,8 +150,6 @@ mod_mainpage_server <- function(id, data){
       }
     })
 
-
-
     # Generate dynamic index title
     output$dynamic_index_title_2 <- shiny::renderUI({
       selected_index <- data()$index[1]  # Get selected index
@@ -177,8 +175,8 @@ mod_mainpage_server <- function(id, data){
 
       # Generate title based on selected index
       title <- switch(selected_index,
-                      "CUI:" = paste("Coastal Upwelling Index:", min_year, "to", max_year),
-                      "CUTI:" = paste("Coastal Upwelling Transport Index", min_year, "to", max_year),
+                      "CUI" = paste("Coastal Upwelling Index:", min_year, "to", max_year),
+                      "CUTI" = paste("Coastal Upwelling Transport Index:", min_year, "to", max_year),
                       "NCBI" = paste("Northern Copepod Biomass Index:", min_year, "to", max_year),
                       "Pick an index")
 
@@ -195,25 +193,65 @@ mod_mainpage_server <- function(id, data){
       fct_forecast_plot(data = data())
     })
 
-     #reactive to update slider minimum value
+     # #reactive to update slider minimum value
+     # min_year <- reactive({
+     #   selected_index <- data()$index[1]  # Get selected index
+     #   if (selected_index == "CUI") {
+     #     return(1964)
+     #   } else if (selected_index == "CUTI") {
+     #     return(1988)
+     #   } else {
+     #     return(NA)
+     #   }
+     # })
+     #
+     # #reactive slider
+     # output$year_slider<- renderUI({
+     #   sliderInput(inputId = ns("years_select"),
+     #               label = "Select year range:",
+     #               min = min_year(),
+     #               max = 2005,
+     #               value =  2000,
+     #               step = 1,
+     #               sep = "",
+     #               ticks = FALSE)
+     # })
+
+     # Reactive function to calculate min year
      min_year <- reactive({
        selected_index <- data()$index[1]  # Get selected index
-       if (selected_index == "CUI") {
-         return(1964)
-       } else if (selected_index == "CUTI") {
-         return(1988)
-       } else {
-         return(NA)
-       }
+       selected_sar <- data()$sar.method[1]  # Get selected method
+
+       # Filter data based on selected index and method
+       filtered_data <- data()[data()$index == selected_index & data()$sar.method == selected_sar, ]
+
+       # Calculate min year
+       min_year <- min(filtered_data$year, na.rm = TRUE)
+
+       return(min_year)
      })
 
-     #reactive slider
-     output$year_slider<- renderUI({
+     # Reactive function to calculate max year
+     max_year <- reactive({
+       selected_index <- data()$index[1]  # Get selected index
+       selected_sar <- data()$sar.method[1]  # Get selected method
+
+       # Filter data based on selected index and method
+       filtered_data <- data()[data()$index == selected_index & data()$sar.method == selected_sar, ]
+
+       # Calculate max year
+       max_year <- max(filtered_data$year, na.rm = TRUE)
+
+       return(max_year)
+     })
+
+     # Reactive slider
+     output$year_slider <- renderUI({
        sliderInput(inputId = ns("years_select"),
                    label = "Select year range:",
                    min = min_year(),
-                   max = 2005,
-                   value =  2000,
+                   max = max_year(),
+                   value = round((min_year() + max_year()) / 2),#select middle year between min/max
                    step = 1,
                    sep = "",
                    ticks = FALSE)
