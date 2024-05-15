@@ -150,26 +150,36 @@ mod_mainpage_server <- function(id, data){
       }
     })
 
-    # Generate dynamic index title
-    output$dynamic_index_title_1 <- shiny::renderUI({
-      selected_index <- data()$index[1]  # Get selected index
 
-      # Generate title based on selected index
-      title <- switch(selected_index,
-                      "CUI" = paste("Coastal Upwelling Index: 1964 to 2006"),
-                      "CUTI" = paste("Coastal Upwelling Transport Index: 1988 to 2006"),
-                      "Pick an index")
+
+    # Generate dynamic index title
+    output$dynamic_index_title_2 <- shiny::renderUI({
+      selected_index <- data()$index[1]  # Get selected index
+      selected_sar <- data()$sar.method[1]  # Get selected method
+      min_year <- min(data()$year)  # Get minimum year
+      max_year <- max(data()$year)  # Get maximum year
+
+      # Generate title based on selected index, method, and year range
+      title <- paste("One year ahead forecast with", selected_index, "and", selected_sar, ":", min_year, "to", max_year)
 
       shiny::HTML(title)
     })
 
-    output$dynamic_index_title_2 <- shiny::renderUI({
+    # Generate dynamic index title
+    output$dynamic_index_title_1 <- shiny::renderUI({
       selected_index <- data()$index[1]  # Get selected index
+      selected_sar <- data()$sar.method[1]  # Get selected method
+      # Filter data based on selected method
+      filtered_data <- data()[data()$sar.method == selected_sar, ]
+
+      min_year <- min(filtered_data$year)  # Get minimum year
+      max_year <- max(filtered_data$year)  # Get maximum y
 
       # Generate title based on selected index
       title <- switch(selected_index,
-                      "CUI" = paste("One year ahead forecast with CUI: 1964 to 2006"),
-                      "CUTI" = paste("One year ahead forecast with CUTI: 1988 to 2006"),
+                      "CUI:" = paste("Coastal Upwelling Index:", min_year, "to", max_year),
+                      "CUTI:" = paste("Coastal Upwelling Transport Index", min_year, "to", max_year),
+                      "NCBI" = paste("Northern Copepod Biomass Index:", min_year, "to", max_year),
                       "Pick an index")
 
       shiny::HTML(title)

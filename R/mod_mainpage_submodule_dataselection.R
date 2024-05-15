@@ -18,7 +18,7 @@ mod_mainpage_submodule_dataselection_ui <- function(id){
         selectInput(
           inputId = ns("select_index"),
           label = "Select an upwelling index",
-          choices = unique(base_plot_data$index),
+          choices = unique(base_plot_data_updated$index),
           selected = "CUI",
           multiple = FALSE
         )
@@ -29,9 +29,9 @@ mod_mainpage_submodule_dataselection_ui <- function(id){
         selectInput(
           inputId = ns("select_sar"),
           label = "Select SAR method",
-          choices = unique(base_plot_data$sar.method),
+          choices = unique(base_plot_data_updated$sar.method),
           selected = "Scheuerell and Williams (2005)",
-          multiple = TRUE
+          multiple = FALSE
         )
       ),
 
@@ -72,7 +72,7 @@ mod_mainpage_submodule_dataselection_server <- function(id){
     # reactive for index, reartype, and pass type selection to filter data used in plots
     filtered_data<- reactive({
 
-      base_plot_data %>%
+      base_plot_data_updated %>%
         dplyr::filter(
           index == input$select_index,
           sar.method %in% c(input$select_sar),
