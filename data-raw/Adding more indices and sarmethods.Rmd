@@ -341,4 +341,112 @@ usethis::use_data(base_plot_data_updated, overwrite = TRUE)
 
 
 
+
+
+
+```{r}
+data <- sar_raw_data_updated %>% 
+  filter(index == "CUI", 
+         sar.method == "Scheuerell and Williams (2005)")
+
+fct_model_single<-function(data){
+ years <- data$year
+  ## number of years of data
+  TT <- length(years)
+  ## get response variable: logit(survival)
+  dat <- matrix(data$logit.s, nrow = 1)
+
+  ## get predictor variable
+  index <- data$value
+
+  ## ## ## z-score the upwelling index
+  index_z <- matrix((index - mean(index)) / sqrt(var(index)), nrow = 1)
+
+  # index_z_train <- index_z[1:TT]
+
+  ## number of regr params (slope + intercept) = 2
+  m <- dim(index_z)[1] + 1
+
+
+  ### build DLM
+
+  ## for process eqn
+  B <- diag(m)                        ## 2x2; Identity
+  U <- matrix(0, nrow = m, ncol = 1)  ## 2x1; both elements = 0
+  Q <- matrix(list(0), m, m)          ## 2x2; all 0 for now
+  diag(Q) <- c("q.alpha", "q.beta")   ## 2x2; diag = (q1,q2)
+
+  ## for observation eqn
+  Z <- array(NA, c(1, m, TT))  ## NxMxT; empty for now
+  Z[1,1,] <- rep(1, TT)        ## Nx1; 1's for intercept
+  Z[1,2,] <- index_z             ## Nx1; predictor variable
+  A <- matrix(0)               ## 1x1; scalar = 0
+  R <- matrix("r")             ## 1x1; scalar = r
+
+  ## only need starting values for regr parameters
+  inits_list <- list(x0 = matrix(c(0, 0), nrow = m))
+
+  ## list of model matrices & vectors
+  mod_list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
+
+
+  ### fit DLM
+  # set.seed(1234)
+  ## fit univariate DLM
+  dlm_train <- MARSS::MARSS(dat, inits = inits_list, model = mod_list)
+
+
+  # #pull indice with full data z score
+  # index_z_test <- index_z[(TT+1)] #get 1 CUI ahead
+
+  # #newdata z array
+  # Z_test <- array(NA, c(1, m, 3))  ## NxMxT; empty for now
+  # Z_test[1,1,] <- rep(1, 3)        ## Nx1; 1's for intercept
+  # Z_test[1,2,] <- index_z_test
+
+  ## forecast
+  forecast_df<-MARSS::forecast(dlm_train, h = 1, type = "ytT", interval = "confidence")
+  
+  return(list (
+    dlm_train = dlm_train,
+    mod_list = mod_list)
+    )
+
+}
+
+results<-fct_model_single(data)
+
+
+# Perform a Kalman filter on the model
+kf <- MARSS::MARSSkf(results$dlm_train)
+
+# Extract the one-step ahead in-sample predictions
+predictions <- kf$ytT
+
+
+# Convert the predictions to the same scale as the original data
+predictions_scaled <-plogis(predictions) * 100
+
+# Compare the predictions to the actual values
+comparison <- data.frame(
+  Year = train_data$year,
+  Actual = train_data$logit.s,
+  Predicted = predictions_scaled
+)
+
+print(comparison)
+
+
+# Extract the filtered state estimates
+state_estimates <- kf$xtt1
+state_estimates <- matrix(state_estimates, ncol = 1)
+
+
+# Calculate the one-step ahead predictions
+predictions <- results$mod_list$Z %*% state_estimates + results$mod_list$A
+
+# Convert the predictions to the same scale as the original data
+predictions_scaled <- stats::plogis(predictions) * 100
+
+```
  
