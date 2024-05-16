@@ -222,17 +222,7 @@ mod_mainpage_server <- function(id, data){
                   ticks = FALSE)
     })
 
-    #generate reactive plots
-    output$plot_index <- plotly::renderPlotly({
-      fct_index_plot(data = data())
-    })
-
-
-    #  output$plot_forecast <- plotly::renderPlotly({
-    #   fct_forecast_plot(data = data())
-    # })
-
-
+    # Reactive plots
      # Reactive value to store the data to be used in the forecast_1 plot
      data_base <- reactiveVal()
 
@@ -273,6 +263,12 @@ mod_mainpage_server <- function(id, data){
       # If model_run is not NULL, plot the results
       fct_forecast_compare_plot(data_base = data_base() , data_select = model_run()$df_forecast, years_selected = model_run()$selected_years)
      })
+
+      #index plot
+      output$plot_index <- plotly::renderPlotly({
+        fct_index_plot(data = data())
+      })
+
 
   })
 }

@@ -1,17 +1,20 @@
+<div style='text-align: left;'>
+<div style="display: flex; flex-wrap: wrap;">
+  <div style="flex: 1; min-width: 300px; padding: 10px;">
 <head>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 
 
-<div style='text-align: left;'>
+
 <i>Study system and fish</i>
 <p>The study area of this application includes the migratory pathway of wild, Snake River spring/summmer Chinook salmon through the Lower Snake and Columbia River basin, including the Federal Columbia River Power System (FCRSP), Pacific Northwest, USA. This application uses 37 years of smolt-to-adult return rates from 1964 to 2005 provided via the MARSS R package that reflect the data reported in Scheuerell and Williams (2005) (Holmes et al 2014). In that time period, changes to operations within the FCRPS, including the addition of 3 upper dams, required adjustments to the method of reporting juvenile and adult counts to estimate abundances (counts from: Ice Harbor Dam (1964-1969), Lower Monumental Dam (1969), Little Goose Dam (1970-1974), Lower Granite Dam (1975 - 2005)). To see the specific methodolgies used to estimate smolt-return-rates reported, see Scheuerell and Williams (2005) and Williams et al. (2005) for explanation.</p>
 
 <i>Upwelling Indices</i>
 <p>Two indices of coastal upwelling are included within this application, the Pacific Coastal Upwelling Index (CUI), also known as the Bakun index, and the Coastal Upwelling Transport Index (CUTI), both made publically available via ERDAPP R package and data server on behalf of NOAA fisheries, Southwest Fisheries Science Center, Environmental Research Division. At the time of the Scheuerell and Williams (2005) publication, CUI was the most accurate indice of upwelling, whereas in 2000, the CUTI was released as an alternative to replace CUI, as an improved estimate of vertical transport for the Pacific West Coast, USA. This application includes the values reported in cubic meters of seawater per second per 100 m of coastline for the location 45&deg;N latitude and 125&deg;W longitude for both indices and were last accessed, April 30th, 2024. Using the data and methods provided via the MARSS R package, we included the month of April for each of the upwelling indices due to the strong upwelling events that occur within the month, prior to juvenile salmon ocean entry in May and June (Holmes et al. 2014, Holmes et al. 2021).</p>
-
-
+</div>
+<div style="flex: 1; min-width: 300px; padding: 10px;">
 <i>Model methods</i>
 <body>
 <p> A Dynamic Linear Model (DLM) was used to forecast salmon survival using marine indices following the methods outlined in Applied time series analysis for fisheries and environmental data, featuring Scheuerell and Williams (2005) previous work (Holmes et al 2021). DLMs are state-space model that include time-varying parameters, which allows for short term forecasts to be generated for each time step. Such that the model relies on prior data to predict the year of interest in a one-year ahead forecast of salmon survival and relies on two equations, an observational equation (Eq. 1) and an evolution equation (Eq. 2). For the observational equation,</p>
@@ -41,6 +44,6 @@
 
   <p>where \(\mathbf{G}_t\) is the parameters evolution matrix, in this case,  an \(m \times m\) identity matrix that informs how the parameters, \(\boldsymbol{\theta}_{t-1}\), change through time. The system variance matrix, \(\mathbf{w}_t\), represents the evolution process error at time \(t\) (Pole et al. 1994). \(W_t\) is assumed to be multivariate normally distributed with mean 0 and covariance matrix \(\mathbf{Q}\), where \(\mathbf{Q} = \begin{bmatrix}q_\alpha& 0 \\ 0&q_\beta\end{bmatrix}\). </p>
 </body>
-
 </div>
-
+</div>
+</div>

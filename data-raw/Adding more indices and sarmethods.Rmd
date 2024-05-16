@@ -22,37 +22,61 @@ library(rerddap) #import data from ERDDAP
 ```
 # sar-raw-data
 
-# Northern copepod biomass data: https://www.fisheries.noaa.gov/data-tools/newport-line-northern-copepod-biomass-data ; update with [NOAA](https://www.fisheries.noaa.gov/west-coast/science-data/local-biological-indicators#copepod-biodiversity) referenced data via [Hooff and Peterson, 2006](https://www.fisheries.noaa.gov/west-coast/science-data/local-biological-indicators#copepod-biodiversity); or ask jenn for where to source data
+# Northern copepod biomass data: include?
+https://www.fisheries.noaa.gov/data-tools/newport-line-northern-copepod-biomass-data ; update with [NOAA](https://www.fisheries.noaa.gov/west-coast/science-data/local-biological-indicators#copepod-biodiversity) referenced data via [Hooff and Peterson, 2006](https://www.fisheries.noaa.gov/west-coast/science-data/local-biological-indicators#copepod-biodiversity); or ask jenn for where to source data
 
 ```{r load_cope_data}
 
 #Northern copepod biomass data
-cope<-read_csv(here("data-raw", "northern_copepod_biomass_newportOR.csv")) 
+NCBI<-read_csv(here("data-raw", "northern_copepod_biomass_newportOR.csv")) 
 
-cope<-cope %>% 
-  filter(Month == 4) %>% 
+df_NCBI<-NCBI %>% 
+  filter(Month == 4) %>% #select certain months? Look into 
   group_by(Year) %>% 
   summarise(value = mean(NORTHERN)) %>% 
-  select(Year, value) %>% 
+  select("year" = Year, value) %>% 
   mutate(index = "NCBI")
 
 #load existing sar_raw_data
-load(here("data", "sar_raw_data.rda")) #load existing data
+load(here("data", "sar_raw_data_updated.rda")) #load existing data
 
 ## load the salmon sar from MARSS
 data(SalmonSurvCUI, package = "MARSS")
+
+
 
 #extract sar and year
 df<-SalmonSurvCUI %>% 
   select(year, logit.s)
 
 #join sar and year with copepod data
-df.cope<-df %>% inner_join( cope, by = c("year" = "Year"))
+df.cope<-df %>% inner_join( df_NCBI, by = "year")
   
 #join sar/cope data with existing sar_raw_data
-sar_raw_data_updated<- sar_raw_data %>% 
+sar_raw_data_updated<- sar_raw_data_updated %>% 
   bind_rows(df.cope) %>% 
   mutate(sar.method = "Scheuerell and Williams (2005)")
+
+```
+
+
+## Index of Coastal Prey Biomass (ICPB) 
+
+- Indice is of Winter (January, February, March) Ichthyoplankton 
+
+- shared with JG via Elizabeth Daly - NOAA Affiliate see [Winter Ichthyoplankton via fisheries.noaa.gov](https://www.fisheries.noaa.gov/west-coast/science-data/2023-summary-ocean-ecosystem-indicators#winter-ichthyoplankton:~:text=at%20nearshore%20stations.-,Winter%20Ichthyoplankton,-The%202023%20winter). 
+
+- Data in-house 1998 to 2019, email for more up to date data. 
+
+- Since starts in 1998, will not include with SW SAR method, could look to older salmon prey biomass index (pre-ICPB). 
+
+```{r load_ICPB_data}
+
+#Northern copepod biomass data
+df_ICPB<-read_csv(here("data-raw", "IndexOfCoastalPreyBiomass.csv")) 
+
+# ## load the salmon sar from MARSS
+# data(SalmonSurvCUI, package = "MARSS")
 
 ```
 
@@ -83,7 +107,9 @@ df.CUI<-dat$data %>%
 ## only include april CUI from ERDAPP data (for now)
 df.CUI<-df.CUI %>% 
   filter(month == 4) %>% 
-  select(year, upwelling_index) 
+  select(year, upwelling_index) %>% 
+    rename("value" = upwelling_index)  %>%
+  mutate(index = "CUI")
 ```
 
 
@@ -115,18 +141,12 @@ df.CUTI<-dat$data %>%
   rename(value = "CUTI") %>% 
   mutate(index = "CUTI")
 
-
-
-# df.cuti<-df %>% inner_join( df.CUTI, by = "year")
-#   
-# #join data - returns year and sar repeated for cui and cuti
-# sar_raw_data<- SalmonSurvCUI %>% 
-#  rename("value" = CUI.apr) %>% 
-#   mutate(index = "CUI") %>% 
-#   bind_rows(df.cuti)
-
 ```
 
+
+
+
+#SAR methods
 
 # CBR SAR data
 ```{r}
@@ -138,27 +158,27 @@ df.cbr <-  df.cbr %>% mutate(year = as.integer(year)) %>%   filter( between(year
 df.cbr<-df.cbr %>% 
   select(year, meanSAR) %>% 
   mutate( logit.s = qlogis(meanSAR/100)) %>% #must divide meanSAR /100 to get 0 to 1 and then apply logit/transform
-  select(-meanSAR) 
+  select(-meanSAR) %>% 
+  mutate(sar.method = "DART")
 
 #CUI
-df.cbr.cui<-df.cbr %>% 
-  inner_join(df.CUI, by = "year") %>% 
-  rename("value" = upwelling_index)  %>%
-  mutate(index = "CUI",
-         sar.method = "DART")
+df.cbr.cui<-df.cbr %>% inner_join(df.CUI, by = "year")
+
 #CUTI
-df.cbr.cuti<-df.cbr %>% 
-  inner_join(df.CUTI, by = "year") %>% 
-  mutate(sar.method = "DART")
+df.cbr.cuti<-df.cbr %>% inner_join(df.CUTI, by = "year")
 
 #NCBI
-df.cbr.ncbi<-df.cbr %>% 
-  inner_join(cope, by = c("year"= "Year")) %>% 
-  mutate(sar.method = "DART")
+df.cbr.icpb<-df.cbr %>% inner_join(df_ICPB, by = c("year"= "year")) 
 
 #join all indices
-df.cbr<-rbind(df.cbr.cui, df.cbr.cuti, df.cbr.ncbi) 
+df.cbr<-rbind(df.cbr.cui, df.cbr.cuti, df.cbr.icpb) 
 
+
+#load existing sar_raw_data
+load(here("data", "sar_raw_data.rda")) #load existing data
+
+sar_raw_data_updated<-sar_raw_data %>% 
+  mutate(sar.method = "Scheuerell and Williams (2005)")
 
 #add to sar_raw_updated with DART sar method with CUI,CUTI, NCBI
 sar_raw_data_updated<-rbind(sar_raw_data_updated, df.cbr)
@@ -171,27 +191,19 @@ sar_raw_data_updated<-rbind(sar_raw_data_updated, df.cbr)
 str(sar_raw_data_updated)
 df.cjs <- data.frame(
   year = 1994:2019,
-  logit.s = rnorm(26)
+  logit.s = rnorm(26),
+  sar.method = "CJS"
 )
 
 #CUI
-df.cjs.cui<- df.cjs %>% 
-  inner_join(df.CUI, by = "year") %>% 
-  rename("value" = upwelling_index)  %>%
-  mutate(index = "CUI",
-         sar.method = "CJS")
+df.cjs.cui<- df.cjs %>% inner_join(df.CUI, by = "year") 
 #CUTI
-df.cjs.cuti<-df.cjs %>% 
-  inner_join(df.CUTI, by = "year") %>% 
-  mutate(sar.method = "CJS")
-
-#NCBI
-df.cjs.ncbi<-df.cjs %>% 
-  inner_join(cope, by = c("year"= "Year")) %>% 
-  mutate(sar.method = "CJS")
+df.cjs.cuti<-df.cjs %>% inner_join(df.CUTI, by = "year")
+#ICPB
+df.cjs.icpb<-df.cjs %>% inner_join(df_ICPB, by = "year") 
 
 #join all indices
-df.cjs<-rbind(df.cjs.cui, df.cjs.cuti, df.cjs.ncbi) 
+df.cjs<-rbind(df.cjs.cui, df.cjs.cuti, df.cjs.icpb) 
 
 
 #add to sar_raw_updated with DART sar method with CUI,CUTI, NCBI

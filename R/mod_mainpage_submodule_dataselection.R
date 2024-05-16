@@ -81,6 +81,16 @@ mod_mainpage_submodule_dataselection_server <- function(id){
         )
     })
 
+    # Observe the selected sar.method and update the choices of select_index
+    observeEvent(input$select_sar, {
+      # Get the indices associated with the selected sar.method
+      indices <- unique(base_plot_data_updated$index[base_plot_data_updated$sar.method == input$select_sar])
+
+      # Update the choices of select_index
+      updateSelectInput(session, inputId = "select_index", choices = indices)
+    })
+
+
 
     # Return the reactive expression(s)
     return(list(
