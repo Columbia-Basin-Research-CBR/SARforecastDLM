@@ -36,7 +36,7 @@ devtools::install_github("Columbia-Basin-Research-CBR/SARforecastDLM")
 library(SARforecastDLM)
 
 # Run the app
-run_app()
+SARforecastDLM::run_app()
 
 #if needed, detach the package workspace and repeat above lines of code
 detach("package:SARforecastDLM", unload=TRUE)
