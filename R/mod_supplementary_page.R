@@ -48,7 +48,7 @@ mod_supplementary_page_ui <- function(id){
         width = 12,
         collapsible = TRUE,
         collapsed = FALSE,
-        HTML("All code featured in this Shiny application is made publically available through our organizations GitHub repository: <a href='https://github.com/Columbia-Basin-Research-CBR/SARforecastDLM'>Columbia-Basin-Research-CBR</a>"
+        HTML("All code featured in this Shiny application is made publically available through our organizations GitHub repository: <a href='https://github.com/Columbia-Basin-Research-CBR/SARforecastDLM'><i class='fab fa-github'></i> Columbia-Basin-Research-CBR</a>"
         )
       )
     ),
