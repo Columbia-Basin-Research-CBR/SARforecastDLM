@@ -41,27 +41,27 @@ functions {
 data {
   int<lower=2> T;                   // number of capture events (includes marking)
   int<lower=0> M;                   // number of unique capture histories
-  int<lower=1> K;                   // total number of covariates
-  matrix[M,K] X;                    // covariates (first column is 1 for intercept)
-  int<lower=0,upper=1> indX_phi[K,T-1]; // use covariate k for phi[t]?
+  // int<lower=1> K;                   // total number of covariates
+  // matrix[M,K] X;                    // covariates (first column is 1 for intercept)
+  // int<lower=0,upper=1> indX_phi[K,T-1]; // use covariate k for phi[t]?
   int<lower=0> group_phi[M,T-1];    // phi group IDs for each unique capture history
-  int<lower=0,upper=1> indX_p[K,T]; // use covariate k for p[t]?
+  // // int<lower=0,upper=1> indX_p[K,T]; // use covariate k for p[t]?
   int<lower=0> group_p[M,T];        // p group IDs for each unique capture history
   int<lower=0,upper=1> y[M,T];      // y[m,t]: history m captured at t
   int<lower=1> n[M];                // n[m]: number of individuals with capture history y[m,]
 }
 
 transformed data {
-  int<lower=1> K_phi;              // number of covariates for phi
-  int<lower=1> K_p;                // number of covariates for p
+  // int<lower=1> K_phi;              // number of covariates for phi
+  // int<lower=1> K_p;                // number of covariates for p
   int<lower=1> J_phi;              // number of groups for phi
   int<lower=1> J_p;                // number of groups for p
   int<lower=0,upper=T> first[M];   // first capture occasion
   int<lower=0,upper=T> last[M];    // last capture occasion
   int<lower=0,upper=T-1> last_minus_first[M];  // duh
 
-  K_phi = sum(to_array_1d(indX_phi));
-  K_p = sum(to_array_1d(indX_p));
+  // K_phi = sum(to_array_1d(indX_phi));
+  // K_p = sum(to_array_1d(indX_p));
   J_phi = max(to_array_1d(group_phi));
   J_p = max(to_array_1d(group_p));
 
@@ -74,89 +74,104 @@ transformed data {
 }
 
 parameters {
-  vector[K_phi] beta_vec;        // regression coefficients for logit(phi)
-  vector<lower=0>[T-1] sigma;    // among-group SDs of logit(phi[,t])
-  matrix[J_phi,T-1] epsilon_z;   // group-specific random effects on phi (z-scores)
-  vector[K_p] b_vec;             // regression coefficients for logit(p)
-  vector<lower=0>[T] s;          // among-group SDs of logit(p[,t])
-  matrix[J_p,T] e_z;             // group-specific random effects on p (z-scores)
+  // vector[K_phi] beta_vec;        // regression coefficients for logit(phi)
+  // vector<lower=0>[T-1] sigma;    // among-group SDs of logit(phi[,t])
+  // matrix[J_phi,T-1] epsilon_z;   // group-specific random effects on phi (z-scores)
+  // // vector[K_p] b_vec;             // regression coefficients for logit(p)
+  // vector<lower=0>[T] s;          // among-group SDs of logit(p[,t])
+  // matrix[J_p,T] e_z;             // group-specific random effects on p (z-scores)
 }
 
 transformed parameters {
-  matrix[K,T-1] beta;   // regression coefficients for logit(phi) with structural zeros
-  matrix[K,T] b;        // regression coefficients for logit(p) with structural zeros
+  // matrix[K,T-1] beta;   // regression coefficients for logit(phi) with structural zeros
+  // matrix[K,T] b;        // regression coefficients for logit(p) with structural zeros
   matrix[M,T-1] phi;    // phi[,t]: Pr[alive at t + 1 | alive at t]
   matrix[M,T] p;        // p[,t]: Pr[captured at t | alive at t] (note p[,1] not used in model)
   matrix[M,T] chi;      // chi[,t]: Pr[not captured >  t | alive at t]
   vector[M] LL;         // log-likelihood of each capture history
 
-  // Fill in sparse beta and b matrices
-  beta = rep_matrix(0, K, T-1);
-  b = rep_matrix(0, K, T);
-
+  for(m in 1:M)
+{
+  for(t in 1:(T-1))
   {
-    int np_phi;
-    int np_p;
-
-    np_phi = 1;
-    np_p = 1;
-
-    for(k in 1:K)
-    {
-      for(t in 1:(T-1))
-        if(indX_phi[k,t])
-        {
-          beta[k,t] = beta_vec[np_phi];
-          np_phi = np_phi + 1;
-        }
-
-      for(t in 1:T)
-        if(indX_p[k,t])
-        {
-          b[k,t] = b_vec[np_p];
-          np_p = np_p + 1;
-        }
-    }
+    phi[m,t] = 0;
   }
+
+  for(t in 1:T)
+  {
+    p[m,t] = 1;
+  }
+
+  chi[m,] = prob_uncaptured(T, p[m,], phi[m,]);
+}
+
+  // // Fill in sparse beta and b matrices
+  // beta = rep_matrix(0, K, T-1);
+  // b = rep_matrix(0, K, T);
+
+  // {
+  //   int np_phi;
+  //   int np_p;
+  //
+  //   np_phi = 1;
+  //   np_p = 1;
+  //
+  //   for(k in 1:K)
+  //   {
+  //     for(t in 1:(T-1))
+  //       if(indX_phi[k,t])
+  //       {
+  //         beta[k,t] = beta_vec[np_phi];
+  //         np_phi = np_phi + 1;
+  //       }
+  //
+  //     for(t in 1:T)
+  //       if(indX_p[k,t])
+  //       {
+  //         b[k,t] = b_vec[np_p];
+  //         np_p = np_p + 1;
+  //       }
+  //   }
+  // }
 
   // Hierarchical logistic regression for phi and p
-  for(m in 1:M)
-  {
-    for(t in 1:(T-1))
-    {
-      if(group_phi[m,t] == 0)  // special code: fix survival to 0 and detection to 1
-        phi[m,t] = 0;
-      else
-        phi[m,t] = inv_logit(X[m,] * beta[,t] + sigma[t] * epsilon_z[group_phi[m,t],t]);
-    }
-
-    for(t in 1:T)
-    {
-      if(group_p[m,t] == 0)
-        p[m,t] = 1;
-      else
-        p[m,t] = inv_logit(X[m,] * b[,t] + s[t] * e_z[group_p[m,t],t]);
-    }
-
-    chi[m,] = prob_uncaptured(T, p[m,], phi[m,]);
-  }
-
-  // Likelihood of capture history, marginalized over discrete latent states
-  LL = rep_vector(0,M);
-
-  for (m in 1:M)
-  {
-    if (last_minus_first[m] > 0)  // if history m was recaptured
-    {
-      for(t in (first[m]+1):last[m])
-      {
-        LL[m] += n[m] * log(phi[m,t-1]);                 // survival from t - 1 to t
-        LL[m] += n[m] * bernoulli_lpmf(y[m,t] | p[m,t]); // observation (captured or not)
-      }
-    }
-    LL[m] += n[m] * log(chi[m,last[m]]);   // Pr[not detected after last[m]]
-  }
-}
+//   for(m in 1:M)
+//   {
+//     for(t in 1:(T-1))
+//     {
+//       if(group_phi[m,t] == 0)  // special code: fix survival to 0 and detection to 1
+//         phi[m,t] = 0;
+//       else
+//         phi[m,t] = inv_logit(X[m,] * beta[,t] + sigma[t] * epsilon_z[group_phi[m,t],t]);
+//     }
+//
+//     for(t in 1:T)
+//     {
+//       if(group_p[m,t] == 0)
+//         p[m,t] = 1;
+//       else
+//         p[m,t] = inv_logit(X[m,] * b[,t] + s[t] * e_z[group_p[m,t],t]);
+//     }
+//
+//     chi[m,] = prob_uncaptured(T, p[m,], phi[m,]);
+//   }
+//
+//   // Likelihood of capture history, marginalized over discrete latent states
+//   LL = rep_vector(0,M);
+//
+//   for (m in 1:M)
+//   {
+//     if (last_minus_first[m] > 0)  // if history m was recaptured
+//     {
+//       for(t in (first[m]+1):last[m])
+//       {
+//         LL[m] += n[m] * log(phi[m,t-1]);                 // survival from t - 1 to t
+//         LL[m] += n[m] * bernoulli_lpmf(y[m,t] | p[m,t]); // observation (captured or not)
+//       }
+//     }
+//     LL[m] += n[m] * log(chi[m,last[m]]);   // Pr[not detected after last[m]]
+//   }
+// }
 
 model {
   // Priors
