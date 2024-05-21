@@ -202,7 +202,7 @@ mod_mainpage_server <- function(id, data){
       title <- switch(vars$selected_index,
                       "CUI" = paste("Coastal Upwelling Index:", vars$min_year, "to", vars$max_year),
                       "CUTI" = paste("Coastal Upwelling Transport Index:", vars$min_year, "to", vars$max_year),
-                      "NCBI" = paste("Northern Copepod Biomass Index:", vars$min_year, "to", vars$max_year),
+                      "ICPB" = paste("Index of Coastal Prey Biomass:", vars$min_year, "to", vars$max_year),
                       "Pick an index")
 
       shiny::HTML(title)
