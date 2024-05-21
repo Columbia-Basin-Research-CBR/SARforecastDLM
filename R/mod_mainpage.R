@@ -22,12 +22,12 @@ mod_mainpage_ui <- function(id){
         collapsible = TRUE,
         collapsed = FALSE,
         title = "One-year ahead forecast of Chinook salmon survival",
-        "Dynamic Linear Modelling (DLM) to explore changes in ocean survival from upwelling indices",
+        "Dynamic Linear Modelling (DLM) to explore changes in ocean survival from marine indices",
       ),
 
 
       shinydashboard::box(width = 12,
-                          title = "Coastal upwelling as a predictor of salmon survival",
+                          title = "Marine indices as a predictor of salmon survival",
                           status = "info",
                           collapsible = TRUE,
                           collapsed = FALSE,
