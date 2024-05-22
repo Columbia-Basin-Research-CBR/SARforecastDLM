@@ -73,7 +73,9 @@ mod_mainpage_ui <- function(id){
             br(),
             htmlOutput(ns("selected_range")),
             #plot comparison forecasts
-            plotly::plotlyOutput(outputId = ns("plot_forecast_1"))
+            plotly::plotlyOutput(outputId = ns("plot_forecast_1")),
+            br(),
+            htmlOutput(ns("legend_text"))
           )
         )
       ),
@@ -148,6 +150,15 @@ mod_mainpage_server <- function(id, data){
                  "</div>")
       )
     })
+
+    #reactive text output for legend text when plot is generated
+    output$legend_text <- renderUI({
+      if (!model_run_once()) {
+        NULL} else {
+          "To highlight specific areas of the plot, click on legend items to toggle on/off."
+        }
+    })
+
 
     # Reactive text output for slider once used
     output$selected_range <- renderUI({
