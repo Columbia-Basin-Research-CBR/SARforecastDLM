@@ -92,7 +92,7 @@ info <- info(datasetid = "erdUI45mo", url = url)
 
 # Download the dataset
 dat <- griddap(info,
-               time = c("1964-01-01T00:00:00Z", "2024-02-15T00:00:00Z"), #currently pulling all data to date (adjust as needed)
+               time = c("1964-01-01T00:00:00Z", "2024-04-15T00:00:00Z"), #currently pulling all data to date (adjust as needed)
                latitude = c(45,45)
 )
 
@@ -126,7 +126,7 @@ info <- info(datasetid = "erdCUTImonthly", url = url)
 
 # Download the dataset
 dat <- griddap(info,
-               time = c("1988-01-15T00:00:00Z", "2024-02-15T00:00:00Z"), #currently pulling all data to date
+               time = c("1988-01-15T00:00:00Z", "2024-04-15T00:00:00Z"), #currently pulling all data to date
                latitude = c(45,45)
 )
 
@@ -222,6 +222,28 @@ sar_raw_data_updated %>%
 usethis::use_data(sar_raw_data_updated, overwrite = TRUE)
 
 str(sar_raw_data_updated)
+```
+
+6/4/14, to use forecast method need to add additonal year of indice to sar_raw_data. saved a new version
+```{r appended_additional_year, eval=FALSE}
+sar_raw_data_updated %>% 
+  group_by(index, sar.method) %>% 
+  summarise(min(year),
+            max(year))
+
+add_years<-data.frame(
+  year = c(2020, 2021, 2006,2020, 2021, 2006 ),
+  logit.s = NA,
+  value = c(16, 30, 1, .255,.381,.361), #pulled values manually
+  index = c("CUI", "CUI", "CUI", "CUTI", "CUTI", "CUTI"),
+  sar.method = c("CJS", "DART", "Scheuerell and Williams (2005)", "CJS", "DART", "Scheuerell and Williams (2005)")
+)
+ 
+ sar_raw_data_updated<- sar_raw_data_updated %>% 
+    bind_rows(add_years)
+ 
+ #save updated sar_raw_data
+usethis::use_data(sar_raw_data_updated, overwrite = TRUE)
 ```
 
 ---
