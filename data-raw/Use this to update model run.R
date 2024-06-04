@@ -1,27 +1,38 @@
 
 # Salmon Survival Forecasting
 
-index_selected<- "CUI"
-sar_method_selected <- "Scheuerell and Williams (2005)"
-years_selected<-2005
+index_selected<- "ICPB"
+sar_method_selected <- "DART"
+years_selected<-2019
 
-newyear<-data.frame(
-  year = 2006,
-  logit.s = NA,
-  value = 1
-  )
+# newyear<-data.frame(
+#   year = 2006,
+#   logit.s = NA,
+#   value = 1
+#   )
+#
+#  all.data <- SalmonSurvCUI %>%
+#    rename(value = CUI.apr) %>%
+#    bind_rows(newyear) %>%
+#    mutate(index = "CUI",
+#           sar.method = "Scheuerell and Williams (2005)")
 
- all.data <- SalmonSurvCUI %>%
-   rename(value = CUI.apr) %>%
-   bind_rows(newyear) %>%
-   mutate(index = "CUI",
-          sar.method = "Scheuerell and Williams (2005)")
+all.data<-sar_raw_data_updated %>%
+  dplyr::filter(  index == index_selected,
+                  sar.method == sar_method_selected) %>%
+  bind_rows(data.frame(year = 2020, logit.s = NA, value = NA, index = "ICPB", sar.method = "DART"))
 
   train.data <- all.data %>%
     dplyr::filter(dplyr::between(year, min(year),max(years_selected)),
                   index == index_selected,
                   sar.method == sar_method_selected)
+  #for baseplots
+  test.data <-all.data %>%
+    dplyr::filter(index == index_selected,
+                  sar.method == sar_method_selected,
+                  is.na(logit.s))
 
+ #for  comparison plot
   test.data <-all.data %>%
     dplyr::filter(dplyr::between(year, min(years_selected+1),max(years_selected+1)),
                                  index == index_selected,
@@ -75,46 +86,6 @@ newyear<-data.frame(
 
 
   ## forecast
-
-
-
-  # ### ERDAPP, NOAA upwelling indice CUI
-  # # Set the URL of the ERDDAP server
-  # url <- "https://upwell.pfeg.noaa.gov/erddap/"
-  #
-  # # Get information about the erdCUTI dataset
-  # info <- info(datasetid = "erdUI45mo", url = url)
-  #
-  # # Download the dataset
-  # dat <- griddap(info,
-  #                time = c("1964-01-01T00:00:00Z", "2024-02-15T00:00:00Z"), #currently pulling all data to date (adjust as needed)
-  #                latitude = c(45,45)
-  # )
-  #
-  # # format time and lat/long
-  # df.CUI<-dat$data %>%
-  #   mutate(time.day = lubridate::ymd_hms(time),
-  #          year = year(time.day),
-  #          month = month(time.day),
-  #          day = day(time.day),
-  #          adjlong = longitude-360) #set to -180 to 180
-  #
-  # ## only include april CUI from ERDAPP data (for now)
-  # df.CUI<-df.CUI %>%
-  #   filter(month == 4) %>%
-  #   select(year, upwelling_index) %>%
-  #   rename(value = upwelling_index)
-  #
-  # #get mean and standard deviation of index used in model
-  # mean_CUI <- mean(SalmonSurvCUI$CUI.apr, na.rm = TRUE)
-  # sd_CUI <- sd(SalmonSurvCUI$CUI.apr, na.rm = TRUE)
-  #
-  # # Get the CUI for the next year and standardize it
-  # new_data <- df.CUI %>%
-  #   filter(year == max(SalmonSurvCUI$year) + 1) %>%
-  #   mutate(CUI = (value - mean_CUI) / sd_CUI) #standardize using the original dataset mean and standard deviation
-
-
   ## get list of Kalman filter output
   kf_out <- MARSSkfss(dlm)
 
@@ -134,18 +105,18 @@ newyear<-data.frame(
   last_Phi <- Phi[, , ncol(Phi)]
 
   #get index value for next year and standardize
-  new_value<-test.data$value
+  test_value<-test.data$value
 
 
   #get mean and standard deviation of index used in model
   mean_index <- mean(index, na.rm = TRUE)
   sd_index <- sd(index, na.rm = TRUE)
-  new_z_value <- (new_value - mean_index) / sd_index  #standardize using the train dataset mean and standard deviation
+  test_z_value <- (test_value - mean_index) / sd_index  #standardize using the train dataset mean and standard deviation
 
 
 
   #forecast logit.s using last predicted regression parameters and z-value for next year
-  forecasted_logit_s <- last_eta[1] + last_eta[2] * new_z_value
+  forecasted_logit_s <- last_eta[1] + last_eta[2] * test_z_value
 
 
   # Calculate the forecasted standard error
@@ -170,6 +141,8 @@ newyear<-data.frame(
   #extract predictions for all years --currently using forecast but should be using predict--doesn't seem to work by calling MARSS::predict()--could try manually extracting and calculating predictions
   forecast_df<-MARSS::forecast(dlm, h= 1, type = "ytT", interval = "confidence")
 
+
+  # add in ifelse statement here that if test.data is empty for y and value then keep nahead, but if has value then drop nahead and append-- include wrangling to prevent overriding forecast year
   #remove last row (incorrect forecast for next year)
   df_pred_raw<- forecast_df$pred  %>% head(-1)
 

@@ -183,7 +183,7 @@ mod_mainpage_server <- function(id, data){
 
       # Calculate min and max year
       min_year <- min(filtered_data$year, na.rm = TRUE)
-      max_year <- max(filtered_data$year, na.rm = TRUE)
+      max_year <- max(filtered_data$year, na.rm = TRUE)- 1
 
       # Return a list of the extracted variables
       list(selected_index = selected_index, selected_sar = selected_sar, min_year = min_year, max_year = max_year)

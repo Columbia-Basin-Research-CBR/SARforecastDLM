@@ -23,7 +23,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
   # Define rectangle parameters
   rectangle_params <- list(
     "select_forecast" = list(x = c(years_selected, years_selected+1, years_selected+1, years_selected), y = c(0, 0, round(max(data$fore_CI_95_upper)), round(max(data$fore_CI_95_upper)))), #adjust 3 to whatever # is predicted
-    "base_forecast" = list(x = c(years_selected, years_selected-1, years_selected-1, years_selected), y = c(0, 0, round(max(data$fore_CI_95_upper)), round(max(data$fore_CI_95_upper)))) # Replace "sar.method2" with the actual second sar.method
+    "base_forecast" = list(x = c(years_selected, years_selected+1, years_selected+1, years_selected), y = c(0, 0, round(max(data$fore_CI_95_upper)), round(max(data$fore_CI_95_upper)))) # Replace "sar.method2" with the actual second sar.method
   )
 
   # Create a plotly plot
@@ -43,27 +43,27 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
       hoverinfo = "text",
       marker = list(color = "#024c63", symbol = "circle-open")
     )
-  if (max(years_selected) != max(data_base$year)){
+  if (max(years_selected) != max(data_base$year)-1){
 
     #define color outside loop for rectangle
     color <- colors[names(data_list[2])]
 
-    p_plotly <- p_plotly %>%
-      # Add "forecasted" rectangle
-      plotly::add_trace(
-        x = rectangle_params[["select_forecast"]]$x,
-        y = rectangle_params[["select_forecast"]]$y,
-        fill = "toself",
-        fillcolor = color,
-        line = list(width = 0),
-        opacity = 0.2,
-        name = "Forecasted SAR,\nout-of-sample",
-        legendgroup = "forecasted2",
-        legendrank = 3,
-        type = "scatter",
-        mode = "none",
-        hoverinfo = "none"
-      )
+    # p_plotly <- p_plotly %>%
+    #   # Add "forecasted" rectangle
+    #   plotly::add_trace(
+    #     x = rectangle_params[["select_forecast"]]$x,
+    #     y = rectangle_params[["select_forecast"]]$y,
+    #     fill = "toself",
+    #     fillcolor = color,
+    #     line = list(width = 0),
+    #     opacity = 0.2,
+    #     name = "Forecasted SAR,\nout-of-sample",
+    #     legendgroup = "forecasted2",
+    #     legendrank = 3,
+    #     type = "scatter",
+    #     mode = "none",
+    #     hoverinfo = "none"
+    #   )
 
   # Add traces for each sar.method
   for(i in seq_along(data_list)) {
@@ -76,8 +76,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         data = data_list[[i]],
         x = ~year,
         y = ~estimate,
-        name = ifelse(names(data_list[i]) == "base_forecast", paste("Forecasted SAR,\ninc.", min(data_base$year),":",max(data_base$year)), paste("Forecasted SAR,\ninc.", min(data_select$year),":",max(data_select$year-1))),
-        legendgroup = paste("forecasted", i),
+        name = ifelse(names(data_list[i]) == "base_forecast", paste("Forecasted SAR,\ninc.", min(data_base$year),":",max(data_base$year)-1), paste("Forecasted SAR,\ninc.", min(data_select$year),":",max(data_select$year-1))),
         legendgroup = paste("forecasted", i),
         legendrank = 2,
         text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR (%):", custom_round(estimate)),
@@ -89,7 +88,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         data = data_list[[i]],
         x = ~year,
         y = ~estimate,
-        name = ifelse(names(data_list[i]) == "base_forecast", paste("Forecasted SAR,\ninc.", min(data_base$year),":",max(data_base$year)),  paste("Forecasted SAR,\ninc.", min(data_select$year),":",max(data_select$year-1))),
+        name = ifelse(names(data_list[i]) == "base_forecast", paste("Forecasted SAR,\ninc.", min(data_base$year),":",max(data_base$year)-1),  paste("Forecasted SAR,\ninc.", min(data_select$year),":",max(data_select$year-1))),
         legendgroup = paste("forecasted", i),
         legendrank = 2,
         text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR (%):", custom_round(estimate)),
@@ -125,6 +124,36 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         ),
         hoverinfo = "text"
       )
+
+      # Filter the last year of data
+      last_year_data <- dplyr::filter(data_list[[i]], year == max(year))
+
+      p_plotly <- p_plotly %>%
+        # Add point range for the last year of data
+        plotly::add_trace(
+          data = last_year_data,
+          x = ~year,
+          y = ~estimate,
+          # error_y = list(
+          #   arrayminus = ~estimate - fore_CI_95_lower,
+          #   array = ~fore_CI_95_upper - estimate,
+          #   width = 1,
+          #   thickness = 1.5,
+          #   color = color
+          # ),
+          mode = "lines+markers",
+          marker = list(
+            size = 10,
+            color = color,
+            symbol = "star-square"  # Change shape of point to cross
+          ),
+          line = list(color = color),
+          name = "Forecasted SAR,\nout-of-sample",
+          legendgroup = paste("forecasted", i),
+          legendrank = 3,
+          mode = "none",
+          hoverinfo = "none"
+        )
   }
 
   p_plotly <- p_plotly %>%
@@ -151,25 +180,25 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
     color<-"#024c63"
 
     p_plotly <- p_plotly %>%
-      # Add "forecasted" rectangle
-      plotly::add_trace(
-        x = rectangle_params[["base_forecast"]]$x,
-        y = rectangle_params[["base_forecast"]]$y,
-        fill = "toself",
-        fillcolor = color,
-        line = list(width = 0),
-        opacity = 0.2,
-        name = "Forecasted SAR,\nout-of-sample",
-        legendrank = 3,
-        type = "scatter",
-        mode = "none",
-        hoverinfo = "none"
-      ) %>%
+      # # Add "forecasted" rectangle
+      # plotly::add_trace(
+      #   x = rectangle_params[["base_forecast"]]$x,
+      #   y = rectangle_params[["base_forecast"]]$y,
+      #   fill = "toself",
+      #   fillcolor = color,
+      #   line = list(width = 0),
+      #   opacity = 0.2,
+      #   name = "Forecasted SAR,\nout-of-sample",
+      #   legendrank = 3,
+      #   type = "scatter",
+      #   mode = "none",
+      #   hoverinfo = "none"
+      # ) %>%
       plotly::add_lines(
         data = data_list[["base_forecast"]],
         x = ~year,
         y = ~estimate,
-        name = paste("Forecasted SAR,\ninc.", min(data_base$year), "to", max(data_base$year), "SAR"),
+        name = paste("Forecasted SAR,\ninc.", min(data_base$year), "to", max(data_base$year)-1, "SAR"),
         legendgroup = "base_forecast",
         legendgroup = "base_forecast",
         legendrank = 2,
@@ -182,7 +211,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         data = data_list[["base_forecast"]],
         x = ~year,
         y = ~estimate,
-        name = paste("Forecasted SAR,\ninc.", min(data_base$year), "to", max(data_base$year), "SAR"),
+        name = paste("Forecasted SAR,\ninc.", min(data_base$year), "to", max(data_base$year)-1, "SAR"),
         legendgroup = "base_forecast",
         legendgroup = "base_forecast",
         legendrank = 2,
@@ -217,6 +246,36 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         ),
         hoverinfo = "text"
       )
+
+      # Filter the last year of data
+      last_year_data <- dplyr::filter(data_list[["base_forecast"]], year == max(year))
+
+      p_plotly <- p_plotly %>%
+        # Add point range for the last year of data
+        plotly::add_trace(
+          data = last_year_data,
+          x = ~year,
+          y = ~estimate,
+          # error_y = list(
+          #   arrayminus = ~estimate - fore_CI_95_lower,
+          #   array = ~fore_CI_95_upper - estimate,
+          #   width = 1,
+          #   thickness = 1.5,
+          #   color = color
+          # ),
+          mode = "lines+markers",
+          marker = list(
+            size = 10,
+            color = color,
+            symbol = "star-square"  # Change shape of point to cross
+          ),
+          line = list(color = color),
+          name = "Forecasted SAR,\nout-of-sample",
+          # legendgroup = "forecasted2",
+          legendrank = 2,
+          mode = "none",
+          hoverinfo = "none"
+        )
 
     p_plotly <- p_plotly %>%
       plotly::layout(
