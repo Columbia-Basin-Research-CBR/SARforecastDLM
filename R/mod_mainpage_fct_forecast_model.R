@@ -67,7 +67,7 @@ fct_forecast_model<-function(data, years_selected, index_selected, sar_method_se
 
   ## forecast
   ## get list of Kalman filter output
-  kf_out <- MARSSkfss(dlm)
+  kf_out <- MARSS::MARSSkfss(dlm)
 
 
   ## forecasts of regr parameters; 2xT matrix - 2 in this case represents slope and intercept (2 regression parameters)
