@@ -24,13 +24,15 @@
 <b>Ocean Indices</b>
 <p></p>
 
+<i>Coastal Upwelling Index (CUI) and Coastal Upwelling Transport Index (CUTI)</i>
 <p>Two indices of coastal upwelling are included within this application, the Pacific Coastal Upwelling Index (CUI) or Bakun index (Bakun 1973,1975), and the Coastal Upwelling Transport Index (CUTI) (Jacox et al., 2018), both made publically available via ERDAPP R package and data server on behalf of NOAA fisheries, Southwest Fisheries Science Center, Environmental Research Division. This application includes the values reported in cubic meters of seawater per second per 100 m of coastline for the location 45&deg;N latitude and 125&deg;W longitude for both indices and were last accessed, June 6th, 2024. Following the methods outlined in MARSS R package (Holmes et al., 2014) further detailed in 'Applied Time Series Analysis for Fisheries and Environmental Sciences' (Holmes et al., 2021), we included the month of April in each of the upwelling indices due to the strong upwelling events that occur during this month, which precedes the ocean entry of juvenile salmon in May and June.</p>
 
-In addition, an index of coastal prey biomass (ICPB) is included within this application. The ICPB is an indice of larval prey as a measure of food availability for Chinook salmon, whose diet primarly consists of winter-spawning late-larval and early juvenile fish (Daly et al., 2013). However, late larval and early juvenile-stage fish tend to be underrepresented in larger trawl nets making them an unreliable metric, whereas the larval stage they can be better estimated via ichthyoplankton sampling. Samples are taken in winter (Jan, Feb, Mar) along the Newport Oregon Hydrographic Line (44.65&deg;N) and reported in grams per square meter. Data used within this application is courtesy of E. Daly, NWFSC, NOAA, provided October, 2019. Due to limited years of early data (pre-1998), only DART and CJS estimated SAR rates are used with the ICPB indice.  </p>
+<i>Index of Coastal Prey Biomass (ICPB)</i>
+<p>In addition, an index of coastal prey biomass (ICPB) is included within this application. The ICPB is an indice of larval prey as a measure of food availability for Chinook salmon, whose diet primarly consists of winter-spawning late-larval and early juvenile fish (Daly et al., 2013). However, late larval and early juvenile-stage fish tend to be underrepresented in larger trawl nets making them an unreliable metric, whereas the larval stage they can be better estimated via ichthyoplankton sampling. Samples are taken in winter (Jan, Feb, Mar) along the Newport Oregon Hydrographic Line (44.65&deg;N) and reported in grams per square meter. Data used within this application is courtesy of E. Daly, NWFSC, NOAA, provided October, 2019. Due to limited years of early data (pre-1998), only DART and CJS estimated SAR rates are used with the ICPB indice. </p>
 
 <b>Model methods</b>
 <body>
-<p> A Dynamic Linear Model (DLM) was used to forecast salmon survival using marine indices following the methods outlined in Applied time series analysis for fisheries and environmental data, featuring Scheuerell and Williams (2005) previous work (Holmes et al., 2021). DLMs are state-space model that include time-varying parameters, which allows for short term forecasts to be generated for each time step. Such that the model relies on prior data to predict the year of interest in a one-year ahead forecast of salmon survival and relies on two equations, an observational equation (Eq. 1) and an evolution equation (Eq. 2). For the observational equation,</p>
+<p> A Dynamic Linear Model (DLM) was used to forecast salmon survival using marine indices following the methods outlined in 'Applied Time Series Analysis for Fisheries and Environmental Sciences', featuring Scheuerell and Williams (2005) previous work (Holmes et al., 2021). DLMs are state-space model that include time-varying parameters, which allows for short term forecasts to be generated for each time step. Such that the model relies on prior data to predict the year of interest in a one-year ahead forecast of salmon survival and relies on two equations, an observational equation (Eq. 1) and an evolution equation (Eq. 2). For the observational equation,</p>
 
   \[
   \begin{equation}
@@ -38,7 +40,7 @@ In addition, an index of coastal prey biomass (ICPB) is included within this app
   \end{equation}
   \]
 
-  <p>At each successive time step, \(t\) the observed response, \(survival_t\), is fitted to a \(1 \times m\) vector for each predictor variable where \(m\) represents \(m \times 1\) regression parameters included plus an observational error term, \(v_t\). The predictor variable, \(\beta_t\), representing the month of April for CUI or CUTI. This model includes both a random slope and intercept, therefore \(m\) includes two time-varying regression parameters,</p>
+  <p>At each successive time step, \(t\) the observed response, \(survival_t\), is fitted to a \(1 \times m\) vector for each predictor variable where \(m\) represents \(m \times 1\) regression parameters included plus an observational error term, \(v_t\). The predictor variable, \(\beta_t\), representing the month of April for CUI or CUTI, or the total mean biomass from January to March for ICPB. This model includes both a random slope and intercept, therefore \(m\) includes two time-varying regression parameters,</p>
 
   \[
   \begin{align}
@@ -47,7 +49,9 @@ In addition, an index of coastal prey biomass (ICPB) is included within this app
   \end{align}
   \]
 
-  <p>Where the \(m \times 1\) vector of regression parameters is defined as \(\theta_t\) and evolves through time according to the first-order Markov process seen in the evolution equation:</p>
+  <p>where the state variables, \( \alpha_t \) and \( \beta_t \), are the intercept and slope of the regression line at time \(t\), respectively. And \(w_{\alpha,t}\) and \(w_{\beta,t}\) are the random error associated with time \(t\) that affect the time-varying state variables \(alpha\) and \(beta\) from time \(t-1\) to \(t\). The process noise for the respective state variables \(alpha\) and \(beta\) are assumed to be normally distributed with mean 0 and variances \(q_{\alpha}\) and \(q_{\beta}\).</p>
+
+<p>In the evolution equation,  \(m \times 1\) vector of regression parameters is defined as \(\theta_t\) and evolves through time according to the first-order Markov process:</p>
 
   \[
   \begin{equation}
@@ -56,6 +60,8 @@ In addition, an index of coastal prey biomass (ICPB) is included within this app
   \]
 
   <p>where \(\mathbf{G}_t\) is the parameters evolution matrix, in this case,  an \(m \times m\) identity matrix that informs how the parameters, \(\boldsymbol{\theta}_{t-1}\), change through time. The system variance matrix, \(\mathbf{w}_t\), represents the evolution process error at time \(t\) (Pole et al., 1994). \(W_t\) is assumed to be multivariate normally distributed with mean 0 and covariance matrix \(\mathbf{Q}\), where \(\mathbf{Q} = \begin{bmatrix}q_\alpha& 0 \\ 0&q_\beta\end{bmatrix}\). </p>
+
+<p>To forecast one-step ahead, a Kalman filter was applied, which is a recursive algorithm that updates the state space parameters and variance at each time step, \(t\), based on the observed data at time \(t-1\). To forecast out of sample, the expected state space parameters and associated variance at the last time step, \(t-1\), were multiplied by the indice of interest at time \(t\). The forecasted value is then the sum? of the expected state space parameters and variance at time \(t\). The Kalman filter algorithm was implemented using the MARSS R package (Holmes et al., 2014). </p>
 </body>
 </div>
 </div>
