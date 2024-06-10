@@ -61,7 +61,9 @@
 
   <p>where \(\mathbf{G}_t\) is the parameters evolution matrix, in this case,  an \(m \times m\) identity matrix that informs how the parameters, \(\boldsymbol{\theta}_{t-1}\), change through time. The system variance matrix, \(\mathbf{w}_t\), represents the evolution process error at time \(t\) (Pole et al., 1994). \(W_t\) is assumed to be multivariate normally distributed with mean 0 and covariance matrix \(\mathbf{Q}\), where \(\mathbf{Q} = \begin{bmatrix}q_\alpha& 0 \\ 0&q_\beta\end{bmatrix}\). </p>
 
-<p>To forecast one-step ahead, a Kalman filter was applied, which is a recursive algorithm that updates the state space parameters and variance at each time step, \(t\), based on the observed data at time \(t-1\). To forecast out of sample, the expected state space parameters and associated variance at the last time step, \(t-1\), were multiplied by the indice of interest at time \(t\). The forecasted value is then the sum? of the expected state space parameters and variance at time \(t\). The Kalman filter algorithm was implemented using the MARSS R package (Holmes et al., 2014). </p>
+<p>To forecast one-step ahead, a Kalman filter was applied, which is a recursive algorithm that updates the state space parameters and variance at each time step, \(t\), based on the observed data at time \(t\). To forecast out of sample, the expected state space parameters and associated variance at the last time step, \(t\) were used. The forecasted value at time \(t + 1\) is the result of the expected state space parameter multiplied by the indice of interest at time \(t + 1\). The Kalman filter algorithm was implemented using the MARSS R package (Holmes et al., 2014).
+
+</p>
 </body>
 </div>
 </div>
