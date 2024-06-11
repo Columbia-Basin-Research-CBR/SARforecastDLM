@@ -1,0 +1,90 @@
+---
+title: "hydro-surv-pred-data-cjs"
+output: html_document
+date: "2024-06-10"
+---
+
+```{r load_libraries}
+library(tidyverse)
+library(here)
+```
+
+
+```{r load_data}
+df_fish_raw<-read_csv(here::here("data-raw/SAR/spsuCH_subset.csv"))
+
+df_fish <- df_fish_raw %>% 
+  filter(t_rear_type == "W") %>% 
+  select(1, 8:19) %>% 
+  #further filter to only include LWG, BON, TWX, BOA, LWA, USNK (TRIBS?)
+  select(-c(lcol_adult, mcn_adult, lsnk_adult, ucol_adult)) 
+
+
+#create detection history with adu return year and 0/1s for detection
+df_detection <- df_fish %>%
+  # Create a new column for adult return year
+  mutate(return_year = coalesce(year(bon_adult), year(lwg_adult), year(usnk_adult), 0)) %>% 
+  # Replace fish detected with 1 and fish not detected (NA values) with 0 to create a detection history
+  mutate_at(vars(2:7), ~ifelse(!is.na(.), 1, 0)) 
+
+
+
+
+
+# Aggregate the data
+df_agg <- df_detection %>%
+  group_by(year, doy, return_year, lwg_last, bon_last, twx_last, bon_adult, lwg_adult, usnk_adult) %>%
+  summarise(n_fish = n(), .groups = 'drop')
+
+#extract just detection history
+DH <- df_agg[,4:9]
+
+#set number of reaches
+reaches <- 5
+
+#scale doy
+df_agg$doy <- scale(df_agg$doy)
+
+
+# set covariate matrix
+covariates <- model.matrix(~ doy, data=df_agg)
+names(covariates) <- c("intercept", "doy")
+
+#assign covariates to detection history for model build
+# number of fw covariates going downstream
+fw.down.cov <- 1
+# total number of covariate effects across all reaches
+NX <- fw.down.cov
+
+xphi.counter <- matrix( c(rep(1,reaches), rep(c(1,0,0,0,0), fw.down.cov )), NX+1, reaches, byrow=TRUE)
+xp.counter <- matrix( c(rep(1,reaches+1), rep(c(0,0,0,0,0,0), NX)), NX+1, reaches+1, byrow=TRUE)
+
+
+release_year <- as.numeric(factor(df_agg$year))
+return_year <- ifelse(!is.na(df_agg$return_year),
+                      as.numeric(factor(df_agg$return_year)),
+                      0) # code NA as zero
+
+# phi: downstream, SAR grouped by release year; upstream grouped by return year
+yr.group.phi <- cbind(matrix(rep(release_year, 5), ncol = 5))
+# p: downstream grouped by release year; upstream grouped by return year
+yr.group.p <- cbind(matrix(rep(release_year, 6), ncol = 6))
+
+
+cjs_lWG2adultgowth <- stan(file = here::here("data-raw/SAR/", "CJS-marray-phiXRE-pXRE-fixNA.stan"),
+                                        data = list(T = reaches+1, M = nrow(df_agg), K = NX+1,
+                                                    X = covariates,
+                                                    indX_phi = xphi.counter,
+                                                    group_phi = yr.group.phi,
+                                                    indX_p = xp.counter,
+                                                    group_p = yr.group.p,
+                                                    y = DH,
+                                                    n = df_agg$n_fish ),
+                                        pars = c("beta","sigma","epsilon_z","b","s","e_z","LL"),
+                                        chains = 3, cores = 3, iter = 1500, warmup = 500,
+                                        control = list(adapt_delta = 0.99, max_treedepth = 15), refresh=75 )
+
+save(cjs_lWG2adultgowth, file=here("data-raw", "SAR", "cjs_LWG2adultgrowth.RData") )
+
+```
+
