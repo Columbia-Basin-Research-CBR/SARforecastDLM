@@ -9,7 +9,7 @@ library(tidyverse)
 library(here)
 ```
 
-
+# Using spsuCH_subset.csv (data used in LWG2AdultGrowth.csv) data to build a CJS model for SAR estimate 
 ```{r load_data}
 df_fish_raw<-read_csv(here::here("data-raw/SAR/spsuCH_subset.csv"))
 
@@ -69,8 +69,10 @@ return_year <- ifelse(!is.na(df_agg$return_year),
 yr.group.phi <- cbind(matrix(rep(release_year, 5), ncol = 5))
 # p: downstream grouped by release year; upstream grouped by return year
 yr.group.p <- cbind(matrix(rep(release_year, 6), ncol = 6))
+```
 
 
+```{r run_model}
 cjs_lWG2adultgowth <- stan(file = here::here("data-raw/SAR/", "CJS-marray-phiXRE-pXRE-fixNA.stan"),
                                         data = list(T = reaches+1, M = nrow(df_agg), K = NX+1,
                                                     X = covariates,
@@ -85,6 +87,27 @@ cjs_lWG2adultgowth <- stan(file = here::here("data-raw/SAR/", "CJS-marray-phiXRE
                                         control = list(adapt_delta = 0.99, max_treedepth = 15), refresh=75 )
 
 save(cjs_lWG2adultgowth, file=here("data-raw", "SAR", "cjs_LWG2adultgrowth.RData") )
+```
+
+
+```{r model_results}
+print(cjs_lWG2adultgowth, pars = "beta", include = TRUE, prob = c(0.025,0.5,0.975))
+
+
+# Extract the posterior samples
+# beta[1,] = intercept
+# beta[2,] = doy
+# beta[,1] = BON
+# beta[,2] = LWG
+# beta[,3] = TWX
+# beta[,4] = BOA
+# beta[,5] = LWA
+# beta[,?] = USNK
 
 ```
 
+- Intercept mean @ BON, LWG,BOA beta[1,(1,2,4)] : shows positive effect with low neff and 95% CI  does not includes 0.
+
+- 
+
+- 
