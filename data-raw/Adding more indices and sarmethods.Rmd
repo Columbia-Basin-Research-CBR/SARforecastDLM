@@ -187,27 +187,42 @@ sar_raw_data_updated<-rbind(sar_raw_data_updated, df.cbr)
 # CJS estimated survival
 
 ```{r}
-#add fake data until figured out
-str(sar_raw_data_updated)
-df.cjs <- data.frame(
-  year = 1994:2019,
-  logit.s = rnorm(26),
-  sar.method = "CJS"
-)
+# #add fake data until figured out
+# str(sar_raw_data_updated)
+# df.cjs <- data.frame(
+#   year = 1994:2019,
+#   logit.s = rnorm(26),
+#   sar.method = "CJS"
+# )
+
+df_cjs_raw<-read_csv(here("data-raw/SAR", "LGR_LGA_surv.csv")) #adding CJS sourced code and adding additional empty year 2020 -see cjs-model-code-no-covariates.R for code
+
+df.cjs <- df_cjs_raw %>% 
+  select(year, median) %>% 
+  mutate(logit.s = qlogis(median/100)) %>% #requires   mutate(s = plogis(logit.s)*100) %>% #convert back to probability
+  select(-median) %>% 
+  mutate(sar.method = "CJS") %>% 
+  add_row(year = 2020, logit.s = NA, sar.method = "CJS") #add 2020 with NA
+
+sar<-sar_raw_data_updated %>% 
+  filter(sar.method != "CJS")
 
 #CUI
 df.cjs.cui<- df.cjs %>% inner_join(df.CUI, by = "year") 
 #CUTI
 df.cjs.cuti<-df.cjs %>% inner_join(df.CUTI, by = "year")
 #ICPB
-df.cjs.icpb<-df.cjs %>% inner_join(df_ICPB, by = "year") 
+df.cjs.icpb<-df.cjs %>% inner_join(df_ICPB, by = "year") #keep 2020
 
 #join all indices
 df.cjs<-rbind(df.cjs.cui, df.cjs.cuti, df.cjs.icpb) 
 
+df.cjs <- df.cjs %>% 
+  add_row(year = 2020, logit.s = NA, sar.method = "CJS", value = NA, index = "ICPB") #add 2020 for ICPB
+
 
 #add to sar_raw_updated with DART sar method with CUI,CUTI, NCBI
-sar_raw_data_updated<-rbind(sar_raw_data_updated, df.cjs)
+sar_raw_data_updated<-rbind(sar, df.cjs)
 ```
 
 
