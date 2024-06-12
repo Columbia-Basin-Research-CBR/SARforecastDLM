@@ -26,59 +26,50 @@ mod_mainpage_ui <- function(id){
       ),
 
 
-      shinydashboard::box(width = 12,
-                          title = "Marine indices as a predictor of salmon survival",
-                          status = "info",
-                          collapsible = TRUE,
-                          collapsed = FALSE,
-                          shiny::includeHTML(system.file("app/www/mod_mainpage_upwelling_text.html", package = "SARforecastDLM")),
-                          br(),
-                          mod_mainpage_submodule_dataselection_ui("submodule_dataselection_1")
+      shinydashboard::box(
+        width = 12,
+        title = "Marine indices as a predictor of salmon survival",
+        status = "info",
+        collapsible = TRUE,
+        collapsed = FALSE,
+        shiny::includeHTML(system.file("app/www/mod_mainpage_upwelling_text.html", package = "SARforecastDLM")),
+        br(),
+        mod_mainpage_submodule_dataselection_ui("submodule_dataselection_1")
                           ),
-      # base plot - all years of data
-      # shinydashboard::box(
-      #   width = 12,
-      #   status = "info",
-      #   collapsible = TRUE,
-      #   collapsed = FALSE,
-      #   title = shiny::uiOutput(ns("dynamic_index_title_2")),
-      #   fluidRow(
-      #     column(
-      #       width = 12,
-      #      plotly::plotlyOutput(outputId = ns("plot_forecast"))
-      #     )
-      #   )
-      # ),
       # Model forecast plot
+
       shinydashboard::box(
         width = 12,
         status = "info",
         collapsible = TRUE,
         collapsed = FALSE,
-        title = "Model forecast accuracy based on years of input data:",
-        fluidRow(
-            column(
-              width = 3,
-              # Add a slider input for year selection
-              uiOutput(ns("year_slider")),
-              br(),
-              # Add an action button to run the model
-              actionButton(inputId = ns("run_model"),
-                           label = "Run Model"),
-              htmlOutput(ns("notification_text")), #future addition look into tool-tip hover for this shinyBS::tooltip
-              br()
-              ),
-          column(
-            width = 9,
+        title = "Model forecast",
+
             br(),
             htmlOutput(ns("selected_range")),
             #plot comparison forecasts
             plotly::plotlyOutput(outputId = ns("plot_forecast_1")),
             br(),
-            htmlOutput(ns("legend_text"))
+          h5("To compare model accuracy based on years of input data, select a year range below:"),
+          br(),
+          column(
+            width = 4,
+            # Add a slider input for year selection
+            uiOutput(ns("year_slider"))
+            ),
+          column(
+            width = 2,
+            br(),
+            br(),
+            # Add an action button to run the model
+            actionButton(inputId = ns("run_model"),
+                         label = "Run Model")
+            ),
+          column(
+            width = 6,
+            htmlOutput(ns("notification_text")), #future addition look into tool-tip hover for this shinyBS::tooltip
           )
-        )
-      ),
+          ),
       #Index plot
       shinydashboard::box(
         width = 12,
@@ -118,7 +109,8 @@ mod_mainpage_server <- function(id, data){
       updateActionButton(session, "run_model", label = "Run Model", disabled = TRUE)
 
       # Update the text to be displayed in output$selected_range
-      model_run_text(HTML(paste("<p>Model results for ",min_year(), "to", input$years_select, data()$index[1], " indice and ",  data()$sar.method[1], " SAR method.")))
+      model_run_text(HTML(paste("<p><b>Model results for ",min_year(), "to", input$years_select, data()$index[1], " indice and ",  data()$sar.method[1], " SAR method.</b>
+                                <br>To highlight specific areas of the plot, click on legend items to toggle on/off.")))
     })
 
     # Observe changes in the slider and/or the coastal index select input
@@ -149,14 +141,6 @@ mod_mainpage_server <- function(id, data){
                  },
                  "</div>")
       )
-    })
-
-    #reactive text output for legend text when plot is generated
-    output$legend_text <- renderUI({
-      if (!model_run_once()) {
-        NULL} else {
-          "To highlight specific areas of the plot, click on legend items to toggle on/off."
-        }
     })
 
 
@@ -227,7 +211,7 @@ mod_mainpage_server <- function(id, data){
                   label = "Select year range:",
                   min = vars$min_year,
                   max = vars$max_year,
-                  value =   round((vars$min_year + vars$max_year) / 2),#select middle year between min/max
+                  value =  vars$max_year, #round((vars$min_year + vars$max_year) / 2),#select middle year between min/max
                   step = 1,
                   sep = "",
                   ticks = FALSE)
@@ -265,15 +249,29 @@ mod_mainpage_server <- function(id, data){
             selected_years = selected_years)
        })
 
+
+
       output$plot_forecast_1 <- plotly::renderPlotly({
       # Check if model_run is NULL (i.e., the model hasn't been run yet)
       if (is.null(model_run())) {
-        return(NULL)
+        # return(NULL)
+        # If model_run is NULL, plot the results
+        # fct_forecast_compare_plot(data_base = data_base() , data_select = model_run()$df_forecast, years_selected = vars$max_year )
+
+        filtered_data <- data() %>%
+          dplyr::filter(
+            index == data()$index[1],
+            sar.method == data()$sar.method[1],
+            dataset == "base_forecast",
+          )
+
+        fct_forecast_plot(data = filtered_data())
       }
 
       # If model_run is not NULL, plot the results
       fct_forecast_compare_plot(data_base = data_base() , data_select = model_run()$df_forecast, years_selected = model_run()$selected_years)
      })
+      print(model_run()$df_forecast)
 
       #index plot
       output$plot_index <- plotly::renderPlotly({
