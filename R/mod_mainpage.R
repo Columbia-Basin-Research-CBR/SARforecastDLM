@@ -236,7 +236,7 @@ mod_mainpage_server <- function(id, data){
          data_base(data())
        } else if (selected_index == "CUTI") {
          data_base(data())
-       } else if (selected_index == "NCBI") {
+       } else if (selected_index == "ICPB") {
          data_base(data())
        }
 

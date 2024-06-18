@@ -75,9 +75,9 @@ mod_mainpage_submodule_dataselection_server <- function(id){
       base_plot_data_updated %>%
         dplyr::filter(
           index == input$select_index,
-          sar.method %in% c(input$select_sar),
-          rear_type %in% c(input$select_rear),
-          pass_type %in% c(input$select_pass)
+          sar.method == input$select_sar,
+          rear_type == input$select_rear,
+          pass_type == input$select_pass
         )
     })
 
