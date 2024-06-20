@@ -19,18 +19,33 @@ library(tidyverse)
 library(MARSS)
 library(here)
 library(rerddap) #import data from ERDDAP
+library(readxl) #import excel files--NCBI
 ```
 # sar-raw-data
 
+As of 6/20/24 adding NCBI back into DLM as place holder for ICPB data. NCBI is publicly available whereas ICPB is not. 
+
+
+
 # Northern copepod biomass data: include?
-https://www.fisheries.noaa.gov/data-tools/newport-line-northern-copepod-biomass-data ; update with [NOAA](https://www.fisheries.noaa.gov/west-coast/science-data/local-biological-indicators#copepod-biodiversity) referenced data via [Hooff and Peterson, 2006](https://www.fisheries.noaa.gov/west-coast/science-data/local-biological-indicators#copepod-biodiversity); or ask jenn for where to source data
+https://www.fisheries.noaa.gov/data-tools/newport-line-northern-copepod-biomass-data ; update with [NOAA](https://www.fisheries.noaa.gov/west-coast/science-data/local-biological-indicators#copepod-biodiversity) referenced data via [Hooff and Peterson, 2006](https://www.fisheries.noaa.gov/west-coast/science-data/local-biological-indicators#copepod-biodiversity);
 
 ```{r load_cope_data}
 
 #Northern copepod biomass data
-NCBI<-read_csv(here("data-raw", "northern_copepod_biomass_newportOR.csv")) 
+#NCBI<-read_csv(here("data-raw", "northern_copepod_biomass_newportOR.csv")) 
 
-df_NCBI<-NCBI %>% 
+url<-"https://www.fisheries.noaa.gov/s3/2023-10/TempOxyNoSo-10232023.xlsx"
+
+# Download the file to a temporary location
+temp_file <- tempfile(fileext = ".xlsx")
+download.file(url, temp_file, mode = "wb")
+
+ncbi_raw<-read_excel(temp_file)
+
+
+
+df_NCBI<-ncbi_raw %>% 
   filter(Month == 4) %>% #select certain months? Look into 
   group_by(Year) %>% 
   summarise(value = mean(NORTHERN)) %>% 
@@ -40,14 +55,12 @@ df_NCBI<-NCBI %>%
 #load existing sar_raw_data
 load(here("data", "sar_raw_data_updated.rda")) #load existing data
 
-## load the salmon sar from MARSS
-data(SalmonSurvCUI, package = "MARSS")
+# ## load the salmon sar from MARSS
+# data(SalmonSurvCUI, package = "MARSS") #only 9 years of overlap-- not including in DLM analysis
 
 
 
-#extract sar and year
-df<-SalmonSurvCUI %>% 
-  select(year, logit.s)
+#extract sar and yea
 
 #join sar and year with copepod data
 df.cope<-df %>% inner_join( df_NCBI, by = "year")
@@ -150,16 +163,17 @@ df.CUTI<-dat$data %>%
 
 # CBR SAR data
 ```{r}
-df.cbr<-read_csv(here("data-raw/SAR", "LGRtoLGA_allpass_W_spsu_ch.csv"))
-df.cbr<-df.cbr[-c(24:31),] #drop CBR notes 
-df.cbr <-  df.cbr %>% mutate(year = as.integer(year)) %>%   filter( between(year, 2002, 2020)) #2021 does not have ocean4 reported--keep to 2020?
+df.cbr.raw<-read_csv(here("data-raw/SAR", "LGRtoLGA_allpass_W_spsu_ch.csv"))
+df.cbr.raw<-df.cbr.raw[-c(24:31),] #drop CBR notes 
+df.cbr.raw <-  df.cbr.raw %>% mutate(year = as.integer(year)) %>%   filter( between(year, 2002, 2020)) #2021 does not have ocean4 reported--keep to 2020?
 
 
-df.cbr<-df.cbr %>% 
+df.cbr<-df.cbr.raw %>% 
   select(year, meanSAR) %>% 
   mutate( logit.s = qlogis(meanSAR/100)) %>% #must divide meanSAR /100 to get 0 to 1 and then apply logit/transform
   select(-meanSAR) %>% 
   mutate(sar.method = "DART")
+
 
 #CUI
 df.cbr.cui<-df.cbr %>% inner_join(df.CUI, by = "year")
@@ -167,8 +181,13 @@ df.cbr.cui<-df.cbr %>% inner_join(df.CUI, by = "year")
 #CUTI
 df.cbr.cuti<-df.cbr %>% inner_join(df.CUTI, by = "year")
 
-#NCBI
+#ICPB
 df.cbr.icpb<-df.cbr %>% inner_join(df_ICPB, by = c("year"= "year")) 
+#NCBI
+df.cbr.ncbi<-df.cbr %>%   
+  add_row(year = 2021, logit.s = NA, sar.method = "DART") %>%  #add 2021 with NA
+  inner_join(df_NCBI, by = "year") 
+
 
 #join all indices
 df.cbr<-rbind(df.cbr.cui, df.cbr.cuti, df.cbr.icpb) 
@@ -213,6 +232,9 @@ df.cjs.cui<- df.cjs %>% inner_join(df.CUI, by = "year")
 df.cjs.cuti<-df.cjs %>% inner_join(df.CUTI, by = "year")
 #ICPB
 df.cjs.icpb<-df.cjs %>% inner_join(df_ICPB, by = "year") #keep 2020
+#NCBI
+df.cjs.ncbi<-df.cjs %>% inner_join(df_NCBI, by = "year") #keep 2020
+
 
 #join all indices
 df.cjs<-rbind(df.cjs.cui, df.cjs.cuti, df.cjs.icpb) 
@@ -222,21 +244,25 @@ df.cjs <- df.cjs %>%
 
 
 #add to sar_raw_updated with DART sar method with CUI,CUTI, NCBI
-sar_raw_data_updated<-rbind(sar, df.cjs)
+sar_raw_data_updated<-rbind(sar_raw_data, df.cjs.ncbi)
+
+
+##add ncbi to sar
+sar_raw_data<- rbind(sar_raw_data, df.cjs.ncbi, df.cbr.ncbi)
+
 ```
 
 
 # save updated sar_raw_data
 
 ```{r}
-sar_raw_data_updated %>% 
+sar_raw_data%>% 
   group_by(sar.method, index) %>% 
   summarise(n_distinct(year))
 
 #save updated sar_raw_data
-usethis::use_data(sar_raw_data_updated, overwrite = TRUE)
+usethis::use_data(sar_raw_data, overwrite = TRUE)
 
-str(sar_raw_data_updated)
 ```
 
 6/4/14, to use forecast method need to add additional year of indices to sar_raw_data. saved a new version
@@ -443,20 +469,11 @@ run_model_and_forecast <- function(data) {
 }
 ```
 
-```{r}
-data1<-sar_raw_data_updated %>% 
-  filter(index == "CUI", 
-         sar.method == "DART")
-
-results<-run_model_and_forecast(data = data1)
-
-```
-
 
 
 ```{r}
 # Get the unique combinations of index and sar.method
-combinations <- unique(sar_raw_data_updated[, c("index", "sar.method")])
+combinations <- unique(sar_raw_data[, c("index", "sar.method")])
 
 
 # Initialize an empty list to store the forecasts
@@ -465,8 +482,8 @@ forecasts <- list()
 # Loop over each combination
 for(i in seq_len(nrow(combinations))) {
   # Subset the data for the current combination
-  data_subset <- sar_raw_data_updated[sar_raw_data_updated$index == combinations$index[i] & 
-                                      sar_raw_data_updated$sar.method == combinations$sar.method[i], ]
+  data_subset <- sar_raw_data[sar_raw_data$index == combinations$index[i] & 
+                                      sar_raw_data$sar.method == combinations$sar.method[i], ]
   
   # Run the model and get the forecast
   forecast <- run_model_and_forecast(data_subset)
@@ -484,10 +501,10 @@ all_forecasts %>%
   group_by(sar.method, index) %>% 
   summarise(n_distinct(year))
 
-base_plot_data_updated<-all_forecasts
+base_plot_data<-all_forecasts
 
 #save updated sar_raw_data
-usethis::use_data(base_plot_data_updated, overwrite = TRUE)
+usethis::use_data(base_plot_data, overwrite = TRUE)
 
 ```
 

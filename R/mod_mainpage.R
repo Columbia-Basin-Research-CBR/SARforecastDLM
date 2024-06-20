@@ -197,7 +197,8 @@ mod_mainpage_server <- function(id, data){
       title <- switch(vars$selected_index,
                       "CUI" = paste("Coastal Upwelling Index:", vars$min_year, "to", vars$max_year),
                       "CUTI" = paste("Coastal Upwelling Transport Index:", vars$min_year, "to", vars$max_year),
-                      "ICPB" = paste("Index of Coastal Prey Biomass:", vars$min_year, "to", vars$max_year),
+                      # "ICPB" = paste("Index of Coastal Prey Biomass:", vars$min_year, "to", vars$max_year),
+                      "NCBI" = paste("Northern Copepod Biomass Index:", vars$min_year, "to", vars$max_year),
                       "Pick an index")
 
       shiny::HTML(title)
@@ -236,13 +237,15 @@ mod_mainpage_server <- function(id, data){
          data_base(data())
        } else if (selected_index == "CUTI") {
          data_base(data())
-       } else if (selected_index == "ICPB") {
+       # } else if (selected_index == "ICPB") {
+       #   data_base(data())
+       } else if (selected_index == "NCBI") {
          data_base(data())
        }
 
 
        # # Run the model
-       df_forecast<-fct_forecast_model(data = sar_raw_data_updated, years_selected = selected_years, index_selected = selected_index, sar_method_selected = selected_sar)
+       df_forecast<-fct_forecast_model(data = sar_raw_data, years_selected = selected_years, index_selected = selected_index, sar_method_selected = selected_sar)
 
        # Return df_forecast and selected_years
        list(df_forecast = df_forecast,
