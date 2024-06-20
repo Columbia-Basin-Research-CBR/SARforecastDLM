@@ -35,7 +35,7 @@ mod_mainpage_ui <- function(id){
         shiny::includeHTML(system.file("app/www/mod_mainpage_upwelling_text.html", package = "SARforecastDLM")),
         br(),
         mod_mainpage_submodule_dataselection_ui("submodule_dataselection_1")
-                          ),
+      ),
       # Model forecast plot
 
       shinydashboard::box(
@@ -44,32 +44,34 @@ mod_mainpage_ui <- function(id){
         collapsible = TRUE,
         collapsed = FALSE,
         title = "Model forecast",
-
-            br(),
-            htmlOutput(ns("selected_range")),
-            #plot comparison forecasts
-            plotly::plotlyOutput(outputId = ns("plot_forecast_1")),
-            br(),
-          h5("To compare model accuracy based on years of input data, select a year range below:"),
+        br(),
+        htmlOutput(ns("selected_range")),
+        #plot comparison forecasts
+        plotly::plotlyOutput(outputId = ns("plot_forecast_1")),
+        br(),
+        h5("To compare model accuracy based on years of input data, select a year range below and select `Run Model` to update the forecast plot:"),
+        br(),
+        column(
+          width = 4,
+          # Add a slider input for year selection
+          uiOutput(ns("year_slider"))
+        ),
+        column(
+          width = 2,
           br(),
-          column(
-            width = 4,
-            # Add a slider input for year selection
-            uiOutput(ns("year_slider"))
-            ),
-          column(
-            width = 2,
-            br(),
-            br(),
-            # Add an action button to run the model
-            actionButton(inputId = ns("run_model"),
-                         label = "Run Model")
-            ),
-          column(
-            width = 6,
-            htmlOutput(ns("notification_text")), #future addition look into tool-tip hover for this shinyBS::tooltip
-          )
-          ),
+          br(),
+          # Add an action button to run the model
+          actionButton(inputId = ns("run_model"),
+                       label = "Run Model"),
+          # Add an action button to reset the model
+          actionButton(inputId = ns("reset_model"),
+                       label = "Reset Model")
+        ),
+        column(
+          width = 6,
+          htmlOutput(ns("notification_text")), #future addition look into tool-tip hover for this shinyBS::tooltip
+        )
+      ),
       #Index plot
       shinydashboard::box(
         width = 12,
@@ -113,6 +115,24 @@ mod_mainpage_server <- function(id, data){
                                 <br>To highlight specific areas of the plot, click on legend items to toggle on/off.")))
     })
 
+    # Observe changes in the "Reset Model" button
+    observeEvent(input$reset_model, {
+      # Only reset the plot if the "Run Model" button has been clicked
+      if (model_run_clicked()) {
+        # When the "Reset Model" button is clicked, reset the plot
+        output$plot_forecast_1 <- plotly::renderPlotly({
+          filtered_data <- data() %>%
+            dplyr::filter(
+              index == data()$index[1],
+              sar.method == data()$sar.method[1],
+              dataset == "base_forecast"
+            )
+
+          fct_forecast_plot(data = filtered_data)
+        })
+      }
+    })
+
     # Observe changes in the slider and/or the coastal index select input
     observeEvent(list(input$years_select, data()$index[1], data()$sar.method[1]), {
       # When the slider, index, or sar.method select input is changed, set model_run_clicked to FALSE
@@ -147,10 +167,8 @@ mod_mainpage_server <- function(id, data){
     # Reactive text output for slider once used
     output$selected_range <- renderUI({
       if (!model_run_once()) {
-        HTML("<ul>
-              <li>Based on the select inputs above, use the slider to select a year range to forecast SAR one-year ahead compared to all data years.</li>
-              <li>Select 'Run Model' when ready. It may take a moment to load.</li>
-             </ul>")
+        HTML(paste("<p><b>Model results for ",min_year(), "to", max_year(), data()$index[1], " indice and ",  data()$sar.method[1], " SAR method.</b>
+        <br>To highlight specific areas of the plot, click on legend items to toggle on/off."))
       } else {
         model_run_text()
       }
@@ -177,6 +195,12 @@ mod_mainpage_server <- function(id, data){
     min_year <- reactive({
       vars <- common_vars()  # Get the common variables
       vars$min_year  # Return min_year
+    })
+
+    # Reactive function for max_year
+    max_year <- reactive({
+      vars <- common_vars()  # Get the common variables
+      vars$max_year  # Return max_year
     })
 
     # Generate dynamic index title
@@ -219,44 +243,45 @@ mod_mainpage_server <- function(id, data){
     })
 
     # Reactive plots
-     # Reactive value to store the data to be used in the forecast_1 plot
-     data_base <- reactiveVal()
+    # Reactive value to store the data to be used in the forecast_1 plot
+    data_base <- reactiveVal()
 
     #reactive to generate model and return plot
     model_run<- eventReactive(input$run_model, {
       # Ensure that input$years_select is set
       req(input$years_select)
 
-       # Get the selected year range
-       selected_years <- input$years_select
-       selected_index <- data()$index[1]
-       selected_sar   <- data()$sar.method[1]
+      # Get the selected year range
+      selected_years <- input$years_select
+      selected_index <- data()$index[1]
+      selected_sar   <- data()$sar.method[1]
 
-       # Select the data based on the selected index--used to prevent data_base to update without hitting run model first (remove if want to compare CUI and CUTI results)
-       if (selected_index == "CUI") {
-         data_base(data())
-       } else if (selected_index == "CUTI") {
-         data_base(data())
-       # } else if (selected_index == "ICPB") {
-       #   data_base(data())
-       } else if (selected_index == "NCBI") {
-         data_base(data())
-       }
-
-
-       # # Run the model
-       df_forecast<-fct_forecast_model(data = sar_raw_data, years_selected = selected_years, index_selected = selected_index, sar_method_selected = selected_sar)
-
-       # Return df_forecast and selected_years
-       list(df_forecast = df_forecast,
-            selected_years = selected_years)
-       })
+      # Select the data based on the selected index--used to prevent data_base to update without hitting run model first (remove if want to compare CUI and CUTI results)
+      if (selected_index == "CUI") {
+        data_base(data())
+      } else if (selected_index == "CUTI") {
+        data_base(data())
+        # } else if (selected_index == "ICPB") {
+        #   data_base(data())
+      } else if (selected_index == "NCBI") {
+        data_base(data())
+      }
 
 
+      # # Run the model
+      df_forecast<-fct_forecast_model(data = sar_raw_data, years_selected = selected_years, index_selected = selected_index, sar_method_selected = selected_sar)
 
-      output$plot_forecast_1 <- plotly::renderPlotly({
+      # Return df_forecast and selected_years
+      list(df_forecast = df_forecast,
+           selected_years = selected_years)
+    })
+
+
+
+    output$plot_forecast_1 <- plotly::renderPlotly({
       # Check if model_run is NULL (i.e., the model hasn't been run yet)
-      if (is.null(model_run())) {
+      # if (is.null(model_run())) {
+      if (!model_run_clicked() & !model_run_once()) {
         # return(NULL)
         # If model_run is NULL, plot the results
         # fct_forecast_compare_plot(data_base = data_base() , data_select = model_run()$df_forecast, years_selected = vars$max_year )
@@ -265,21 +290,21 @@ mod_mainpage_server <- function(id, data){
           dplyr::filter(
             index == data()$index[1],
             sar.method == data()$sar.method[1],
-            dataset == "base_forecast",
+            dataset == "base_forecast"
           )
 
-        fct_forecast_plot(data = filtered_data())
+        fct_forecast_plot(data = filtered_data)
+      } else if (!is.null(model_run())) {
+        # If model_run is not NULL, plot the results
+        fct_forecast_compare_plot(data_base = data_base() , data_select = model_run()$df_forecast, years_selected = model_run()$selected_years)
       }
+    })
 
-      # If model_run is not NULL, plot the results
-      fct_forecast_compare_plot(data_base = data_base() , data_select = model_run()$df_forecast, years_selected = model_run()$selected_years)
-     })
-      print(model_run()$df_forecast)
 
-      #index plot
-      output$plot_index <- plotly::renderPlotly({
-        fct_index_plot(data = data())
-      })
+    #index plot
+    output$plot_index <- plotly::renderPlotly({
+      fct_index_plot(data = data())
+    })
 
 
   })
