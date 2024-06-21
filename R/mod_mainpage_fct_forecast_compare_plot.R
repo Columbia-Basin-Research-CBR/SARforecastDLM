@@ -1,5 +1,7 @@
 #' forecast_plot
-#'
+#'@param data_base data frame generated via reactive in mod_mainpage_server with observed SAR data
+#'@param data_select data frame generated from model run with forecasted SAR data
+#'@param years_selected years of interest used to forecast SAR compared to the data_base (all years)
 #' @description using DLM via MARSS package, plot the forecasted values and CI for the SAR in the next year
 #'
 #' @return plotly figure with highlighted portion to show forecasted values versus out-of-sample.

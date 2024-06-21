@@ -96,16 +96,19 @@ mod_mainpage_server <- function(id, data){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
-    # Reactive values to track whether the "Run Model" button has been clicked
+    # Reactive values to track the state of the model run and reset
     model_run_clicked <- reactiveVal(FALSE)
     model_run_once <- reactiveVal(FALSE)
     model_run_text <- reactiveVal("")
+    model_reset_clicked <- reactiveVal(FALSE)
+
 
     # Observe changes in the "Run Model" button
     observeEvent(input$run_model, {
       # When the "Run Model" button is clicked, set model_run_clicked to TRUE
       model_run_clicked(TRUE)
       model_run_once(TRUE)
+      model_reset_clicked(FALSE)  # Reset the reset state
 
       # Disable the "Run Model" button - if nothing has been changed since last run
       updateActionButton(session, "run_model", label = "Run Model", disabled = TRUE)
@@ -117,35 +120,36 @@ mod_mainpage_server <- function(id, data){
 
     # Observe changes in the "Reset Model" button
     observeEvent(input$reset_model, {
-      # Only reset the plot if the "Run Model" button has been clicked
-      if (model_run_clicked()) {
-        # When the "Reset Model" button is clicked, reset the plot
-        output$plot_forecast_1 <- plotly::renderPlotly({
-          filtered_data <- data() %>%
-            dplyr::filter(
-              index == data()$index[1],
-              sar.method == data()$sar.method[1],
-              dataset == "base_forecast"
-            )
+      # When the "Reset Model" button is clicked, set model_run_clicked to FALSE
+      model_run_clicked(FALSE)
+      model_reset_clicked(TRUE)  # Set the reset state to TRUE
 
-          fct_forecast_plot(data = filtered_data)
-        })
-      }
+
+      # Enable the "Run Model" button once the model has been reset
+      updateActionButton(session, "run_model", label = "Run Model", disabled = FALSE)
+
+      # Update the text to be displayed in output$selected_range
+      model_run_text("")
+
+      #reset slider to max year
+      updateSliderInput(session, "years_select", value = max_year())
     })
 
     # Observe changes in the slider and/or the coastal index select input
     observeEvent(list(input$years_select, data()$index[1], data()$sar.method[1]), {
-      # When the slider, index, or sar.method select input is changed, set model_run_clicked to FALSE
-      model_run_clicked(FALSE)
+      if (model_run_clicked() && model_run_once()) {
+        # Only reset the plot if the model has not been run or has been reset
+        model_reset_clicked(FALSE)
+        model_run_clicked(FALSE)
 
-      # Enable the "Run Model" button once an input has changed
-      updateActionButton(session, "run_model", label = "Run Model", disabled = FALSE)
+        # Enable the "Run Model" button once an input has changed
+        updateActionButton(session, "run_model", label = "Run Model", disabled = FALSE)
+      }
     }, ignoreInit = TRUE)
-
 
     output$notification_text <- renderUI({
       HTML(paste("<div style='color: #b47747;'>",
-                 if (model_run_once() && !model_run_clicked()) {
+                 if (model_run_once() && !model_run_clicked() && !model_reset_clicked()){
                    paste("<br>
             <b>Model adjustments:</b> ",
                          "<ul>
@@ -163,7 +167,6 @@ mod_mainpage_server <- function(id, data){
       )
     })
 
-
     # Reactive text output for slider once used
     output$selected_range <- renderUI({
       if (!model_run_once()) {
@@ -173,7 +176,6 @@ mod_mainpage_server <- function(id, data){
         model_run_text()
       }
     })
-
 
     # Reactive function to extract common variables for dynamic titles and slider
     common_vars <- reactive({
@@ -276,37 +278,31 @@ mod_mainpage_server <- function(id, data){
            selected_years = selected_years)
     })
 
-
-
+    #plot forecast
     output$plot_forecast_1 <- plotly::renderPlotly({
-      # Check if model_run is NULL (i.e., the model hasn't been run yet)
-      # if (is.null(model_run())) {
-      if (!model_run_clicked() & !model_run_once()) {
-        # return(NULL)
-        # If model_run is NULL, plot the results
-        # fct_forecast_compare_plot(data_base = data_base() , data_select = model_run()$df_forecast, years_selected = vars$max_year )
-
+      # Check if model_run_clicked and model_run_once is FALSE (i.e., model has not been clicked or been run once)
+      if (!model_run_clicked() || !model_run_once() || model_reset_clicked()) {
+        # If model_run_clicked and model_run_once is FALSE, plot the base forecast and allow user to adjust plot based on inputs(index & sar.method)
         filtered_data <- data() %>%
           dplyr::filter(
             index == data()$index[1],
             sar.method == data()$sar.method[1],
             dataset == "base_forecast"
           )
-
+        # base plot
         fct_forecast_plot(data = filtered_data)
-      } else if (!is.null(model_run())) {
-        # If model_run is not NULL, plot the results
+        #Check if model_run is not NULL (i.e., model has been run)
+      } else if (model_run_clicked() && !is.null(model_run())) {
+        # If model_run has been run, plot the results of the select years in the model run compare plot
         fct_forecast_compare_plot(data_base = data_base() , data_select = model_run()$df_forecast, years_selected = model_run()$selected_years)
       }
-    })
 
+    })
 
     #index plot
     output$plot_index <- plotly::renderPlotly({
       fct_index_plot(data = data())
     })
-
-
   })
 }
 
