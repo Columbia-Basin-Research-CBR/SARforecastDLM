@@ -160,7 +160,7 @@ mod_mainpage_server <- function(id, data){
             <li> Indice:", data()$index[1], "</li>
             <li> SAR method:", data()$sar.method[1], "</li>
             </ul>
-            Please click 'Run Model' again to see adjustments.")
+            Click 'Run Model' to see adjustments.")
                  } else if (model_run_clicked() && !input_changed_after_run()) {
                    "<br>Model has not changed, adjust parameters to re-run model."
                  } else {
