@@ -65,7 +65,7 @@ mod_mainpage_ui <- function(id){
                        label = "Run Model"),
           # Add an action button to reset the model
           actionButton(inputId = ns("reset_model"),
-                       label = "Reset Model")
+                       label = "Reset")
         ),
         column(
           width = 6,
@@ -101,6 +101,7 @@ mod_mainpage_server <- function(id, data){
     model_run_once <- reactiveVal(FALSE)
     model_run_text <- reactiveVal("")
     model_reset_clicked <- reactiveVal(FALSE)
+    input_changed_after_run <- reactiveVal(FALSE)
 
 
     # Observe changes in the "Run Model" button
@@ -109,6 +110,7 @@ mod_mainpage_server <- function(id, data){
       model_run_clicked(TRUE)
       model_run_once(TRUE)
       model_reset_clicked(FALSE)  # Reset the reset state
+      input_changed_after_run(FALSE)
 
       # Disable the "Run Model" button - if nothing has been changed since last run
       updateActionButton(session, "run_model", label = "Run Model", disabled = TRUE)
@@ -137,10 +139,11 @@ mod_mainpage_server <- function(id, data){
 
     # Observe changes in the slider and/or the coastal index select input
     observeEvent(list(input$years_select, data()$index[1], data()$sar.method[1]), {
-      if (model_run_clicked() && model_run_once()) {
+      if ( model_run_once()) {
         # Only reset the plot if the model has not been run or has been reset
         model_reset_clicked(FALSE)
-        model_run_clicked(FALSE)
+        input_changed_after_run(TRUE)
+
 
         # Enable the "Run Model" button once an input has changed
         updateActionButton(session, "run_model", label = "Run Model", disabled = FALSE)
@@ -149,7 +152,7 @@ mod_mainpage_server <- function(id, data){
 
     output$notification_text <- renderUI({
       HTML(paste("<div style='color: #b47747;'>",
-                 if (model_run_once() && !model_run_clicked() && !model_reset_clicked()){
+                 if (model_run_once() && input_changed_after_run()){
                    paste("<br>
             <b>Model adjustments:</b> ",
                          "<ul>
@@ -158,7 +161,7 @@ mod_mainpage_server <- function(id, data){
             <li> SAR method:", data()$sar.method[1], "</li>
             </ul>
             Please click 'Run Model' again to see adjustments.")
-                 } else if (model_run_clicked()) {
+                 } else if (model_run_clicked() && !input_changed_after_run()) {
                    "<br>Model has not changed, adjust parameters to re-run model."
                  } else {
                    NULL

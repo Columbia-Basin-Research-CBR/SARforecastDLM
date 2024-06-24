@@ -14,25 +14,6 @@ fct_forecast_plot <- function(data) {
   # Define color for Scheuerell and Williams (2005) method
   color <- "#024c63"
 
-  # Define rectangle parameters for Scheuerell and Williams (2005) method
-  # rectangle_params <- list(x = c(2005, 2006, 2006, 2005), y = c(0, 0, 6.5, 6.5))
-
-  # # Add "forecasted" rectangle
-  # p_plotly <- p_plotly %>%
-  #   plotly::add_trace(
-  #     x = rectangle_params$x,
-  #     y = rectangle_params$y,
-  #     fill = "toself",
-  #     fillcolor = color,
-  #     line = list(width = 0),
-  #     opacity = 0.2,
-  #     name ="Forecasted SAR,\nout-of-sample",
-  #     legendgroup = "forecasted2",
-  #     legendrank = 3,
-  #     type = "scatter",
-  #     mode = "none",
-  #     hoverinfo = "none"
-  #   )
 
   # Add observed and predicted SAR lines and markers
   p_plotly <- p_plotly %>%
@@ -40,10 +21,10 @@ fct_forecast_plot <- function(data) {
       data = data,
       x = ~year,
       y = ~y,
-      name = "Observed SAR,\nScheuerell & Williams (2005)",
+      name = "Observed SAR",
       legendgroup = "observed",
       legendrank = 1,
-      text = ~ paste("Year of ocean entry:", year, "<br>Observed SAR:", custom_round(y)),
+      text = ~ paste("Year of ocean entry:", year, "<br>Observed SAR (%):", custom_round(y)),
       hoverinfo = "text",
       marker = list(color = color, symbol = "circle-open")
     ) %>%
@@ -51,10 +32,10 @@ fct_forecast_plot <- function(data) {
       data = data,
       x = ~year,
       y = ~estimate,
-      name = "Forecasted SAR",
+      name = paste("Predicted SAR,\ninc.", min(data$year), "to", max(data$year)-1, "SAR"),
       legendgroup = "forecasted",
       legendrank = 2,
-      text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR (%):", custom_round(estimate)),
+      text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR (%):", custom_round(estimate)),
       hoverinfo = "text",
       line = list(color = color),
       hoverinfo = "text"
@@ -63,10 +44,10 @@ fct_forecast_plot <- function(data) {
       data = data,
       x = ~year,
       y = ~estimate,
-      name = "Forecasted SAR",
+      name = paste("Predicted SAR,\ninc.", min(data$year), "to", max(data$year)-1, "SAR"),
       legendgroup = "forecasted",
       legendrank = 2,
-      text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR (%):", custom_round(estimate)),
+      text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR (%):", custom_round(estimate)),
       hoverinfo = "text",
       marker = list(size = 6, color = color),
       showlegend = FALSE
@@ -78,7 +59,7 @@ fct_forecast_plot <- function(data) {
       name = "Upper 95% CI",
       legendgroup = "forecasted",
       legendrank = 2,
-      text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR upper 95% CI:", custom_round(fore_CI_95_upper)),
+      text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR upper 95% CI:", custom_round(fore_CI_95_upper)),
       line = list(
         dash = "dash",
         color = color
@@ -92,13 +73,44 @@ fct_forecast_plot <- function(data) {
       name = "Lower 95% CI",
       legendgroup = "forecasted",
       legendrank = 2,
-      text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR lower 95% CI:", custom_round(fore_CI_95_lower)),
+      text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR lower 95% CI:", custom_round(fore_CI_95_lower)),
       line = list(
         dash = "dash",
         color = color
       ),
       hoverinfo = "text"
     )
+
+  # Filter the last year of data
+  last_year_data <- dplyr::filter(data, year == max(year))
+
+  p_plotly <- p_plotly %>%
+    # Add point range for the last year of data
+    plotly::add_trace(
+      data = last_year_data,
+      x = ~year,
+      y = ~estimate,
+      # error_y = list(
+      #   arrayminus = ~estimate - fore_CI_95_lower,
+      #   array = ~fore_CI_95_upper - estimate,
+      #   width = 1,
+      #   thickness = 1.5,
+      #   color = color
+      # ),
+      mode = "lines+markers",
+      marker = list(
+        size = 10,
+        color = color,
+        symbol = "star-square"  # Change shape of point to cross
+      ),
+      line = list(color = color),
+      name = "Forecasted SAR,\nout-of-sample",
+      # legendgroup = "forecasted2",
+      legendrank = 2,
+      mode = "none",
+      hoverinfo = "none"
+    )
+
 
   p_plotly <- p_plotly %>%
     plotly::layout(

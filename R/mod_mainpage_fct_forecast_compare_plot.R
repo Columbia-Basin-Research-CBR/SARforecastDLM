@@ -22,12 +22,6 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
   # Define colors for base vs forecast selected
   colors <- c("base_forecast" = grDevices::rgb(2/255, 76/255, 99/255, 0.25), "select_forecast" = "#b47747") #setting alpha = .5 for color "#024c63"-RGB=(2, 76, 99), convert to scale 0-1 by /255 to set alpha to .25.
 
-  # Define rectangle parameters
-  rectangle_params <- list(
-    "select_forecast" = list(x = c(years_selected, years_selected+1, years_selected+1, years_selected), y = c(0, 0, round(max(data$fore_CI_95_upper)), round(max(data$fore_CI_95_upper)))), #adjust 3 to whatever # is predicted
-    "base_forecast" = list(x = c(years_selected, years_selected+1, years_selected+1, years_selected), y = c(0, 0, round(max(data$fore_CI_95_upper)), round(max(data$fore_CI_95_upper)))) # Replace "sar.method2" with the actual second sar.method
-  )
-
   # Create a plotly plot
   p_plotly <- plotly::plot_ly()
 
@@ -50,23 +44,6 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
     #define color outside loop for rectangle
     color <- colors[names(data_list[2])]
 
-    # p_plotly <- p_plotly %>%
-    #   # Add "forecasted" rectangle
-    #   plotly::add_trace(
-    #     x = rectangle_params[["select_forecast"]]$x,
-    #     y = rectangle_params[["select_forecast"]]$y,
-    #     fill = "toself",
-    #     fillcolor = color,
-    #     line = list(width = 0),
-    #     opacity = 0.2,
-    #     name = "Forecasted SAR,\nout-of-sample",
-    #     legendgroup = "forecasted2",
-    #     legendrank = 3,
-    #     type = "scatter",
-    #     mode = "none",
-    #     hoverinfo = "none"
-    #   )
-
   # Add traces for each sar.method
   for(i in seq_along(data_list)) {
 
@@ -78,10 +55,10 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         data = data_list[[i]],
         x = ~year,
         y = ~estimate,
-        name = ifelse(names(data_list[i]) == "base_forecast", paste("Forecasted SAR,\ninc.", min(data_base$year),":",max(data_base$year)-1), paste("Forecasted SAR,\ninc.", min(data_select$year),":",max(data_select$year-1))),
+        name = ifelse(names(data_list[i]) == "base_forecast", paste("Predicted SAR,\ninc.", min(data_base$year),":",max(data_base$year)-1), paste("Predicted SAR,\ninc.", min(data_select$year),":",max(data_select$year-1))),
         legendgroup = paste("forecasted", i),
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR (%):", custom_round(estimate)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR (%):", custom_round(estimate)),
         hoverinfo = "text",
         line = list(color = color),
         hoverinfo = "text"
@@ -90,10 +67,10 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         data = data_list[[i]],
         x = ~year,
         y = ~estimate,
-        name = ifelse(names(data_list[i]) == "base_forecast", paste("Forecasted SAR,\ninc.", min(data_base$year),":",max(data_base$year)-1),  paste("Forecasted SAR,\ninc.", min(data_select$year),":",max(data_select$year-1))),
+        name = ifelse(names(data_list[i]) == "base_forecast", paste("Predicted SAR,\ninc.", min(data_base$year),":",max(data_base$year)-1),  paste("Predicted SAR,\ninc.", min(data_select$year),":",max(data_select$year-1))),
         legendgroup = paste("forecasted", i),
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR (%):", custom_round(estimate)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR (%):", custom_round(estimate)),
         hoverinfo = "text",
         marker = list(size = 6, color = color),
         showlegend = FALSE
@@ -105,7 +82,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         name = "Upper 95% CI",
         legendgroup = paste("forecasted", i),
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR upper 95% CI:", custom_round(fore_CI_95_upper)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR upper 95% CI:", custom_round(fore_CI_95_upper)),
         line = list(
           dash = "dash",
           color = color
@@ -119,7 +96,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         name = "Lower 95% CI",
         legendgroup = paste("forecasted", i),
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR lower 95% CI:", custom_round(fore_CI_95_lower)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR lower 95% CI:", custom_round(fore_CI_95_lower)),
         line = list(
           dash = "dash",
           color = color
@@ -182,29 +159,15 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
     color<-"#024c63"
 
     p_plotly <- p_plotly %>%
-      # # Add "forecasted" rectangle
-      # plotly::add_trace(
-      #   x = rectangle_params[["base_forecast"]]$x,
-      #   y = rectangle_params[["base_forecast"]]$y,
-      #   fill = "toself",
-      #   fillcolor = color,
-      #   line = list(width = 0),
-      #   opacity = 0.2,
-      #   name = "Forecasted SAR,\nout-of-sample",
-      #   legendrank = 3,
-      #   type = "scatter",
-      #   mode = "none",
-      #   hoverinfo = "none"
-      # ) %>%
       plotly::add_lines(
         data = data_list[["base_forecast"]],
         x = ~year,
         y = ~estimate,
-        name = paste("Forecasted SAR,\ninc.", min(data_base$year), "to", max(data_base$year)-1, "SAR"),
+        name = paste("Predicted SAR,\ninc.", min(data_base$year), "to", max(data_base$year)-1, "SAR"),
         legendgroup = "base_forecast",
         legendgroup = "base_forecast",
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR (%):", custom_round(estimate)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR (%):", custom_round(estimate)),
         hoverinfo = "text",
         line = list(color = color),
         hoverinfo = "text"
@@ -213,11 +176,11 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         data = data_list[["base_forecast"]],
         x = ~year,
         y = ~estimate,
-        name = paste("Forecasted SAR,\ninc.", min(data_base$year), "to", max(data_base$year)-1, "SAR"),
+        name = paste("Predicted SAR,\ninc.", min(data_base$year), "to", max(data_base$year)-1, "SAR"),
         legendgroup = "base_forecast",
         legendgroup = "base_forecast",
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR (%):", custom_round(estimate)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR (%):", custom_round(estimate)),
         hoverinfo = "text",
         marker = list(size = 6, color = color),
         showlegend = FALSE
@@ -228,7 +191,8 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         y = ~fore_CI_95_upper,
         name = "Upper 95% CI",
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR upper 95% CI:", custom_round(fore_CI_95_upper)),
+        legendgroup = "base_forecast",
+        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR upper 95% CI:", custom_round(fore_CI_95_upper)),
         line = list(
           dash = "dash",
           color = color
@@ -241,7 +205,8 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         y = ~fore_CI_95_lower,
         name = "Lower 95% CI",
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR lower 95% CI:", custom_round(fore_CI_95_lower)),
+        legendgroup = "base_forecast",
+        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR lower 95% CI:", custom_round(fore_CI_95_lower)),
         line = list(
           dash = "dash",
           color = color
@@ -273,8 +238,8 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
           ),
           line = list(color = color),
           name = "Forecasted SAR,\nout-of-sample",
-          # legendgroup = "forecasted2",
-          legendrank = 2,
+          legendgroup = "forecasted",
+          legendrank = 3,
           mode = "none",
           hoverinfo = "none"
         )
