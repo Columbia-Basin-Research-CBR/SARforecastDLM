@@ -172,7 +172,7 @@ mod_mainpage_server <- function(id, data){
 
     # Reactive text output for slider once used
     output$selected_range <- renderUI({
-      if (!model_run_once()) {
+      if (!model_run_once() || model_reset_clicked()) {
         HTML(paste("<p><b>Model results for ",min_year(), "to", max_year(), data()$index[1], " indice and ",  data()$sar.method[1], " SAR method.</b>
         <br>To highlight specific areas of the plot, click on legend items to toggle on/off."))
       } else {
