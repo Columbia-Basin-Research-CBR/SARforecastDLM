@@ -26,8 +26,8 @@ app_ui <- function(request) {
           shinydashboard::sidebarMenu(
             # Setting id makes input$tabs give the tabName of currently-selected tab
             id = "tabs",
-            shinydashboard::menuItem("Welcome", tabName = "welcome", icon = icon("house")),
-            shinydashboard::menuItem("Forecast Survival", tabName = "figs", icon = icon("chart-line")),
+            shinydashboard::menuItem("About", tabName = "about", icon = icon("house")),
+            shinydashboard::menuItem("Forecast Survival", tabName = "figs", icon = icon("chart-line"), selected = TRUE),
             shinydashboard::menuItem("Supplementary Information", tabName = "bkg", icon = icon("book"))
           )
         ),
@@ -40,7 +40,7 @@ app_ui <- function(request) {
 
           #set tab naming with associated modules
           shinydashboard::tabItems(
-            shinydashboard::tabItem(tabName = "welcome",mod_welcome_page_ui("welcome_page_ui_1")),
+            shinydashboard::tabItem(tabName = "about",mod_about_page_ui("about_page_ui_1")),
             shinydashboard::tabItem(tabName = "figs", mod_mainpage_ui("mainpage_1")),
             shinydashboard::tabItem(tabName = "bkg", mod_supplementary_page_ui("supplementary_page_1"))
           )

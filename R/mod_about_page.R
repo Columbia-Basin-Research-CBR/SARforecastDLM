@@ -1,13 +1,13 @@
-#' welcome_page UI Function
+#' about_page UI Function
 #'
-#' @description welcome page for shinyapp
+#' @description about page for shinyapp
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
-mod_welcome_page_ui <- function(id){
+mod_about_page_ui <- function(id){
   ns <- NS(id)
   tagList(
 
@@ -31,11 +31,11 @@ mod_welcome_page_ui <- function(id){
         status = "primary",
         column(
           width = 7,
-          shiny::includeHTML(system.file("app/www/mod_welcome_application_intro_text.html", package = "SARforecastDLM"))
+          shiny::includeHTML(system.file("app/www/mod_about_application_intro_text.html", package = "SARforecastDLM"))
         ),
         column(
           width = 5,
-          tags$img(src="www/mod_welcome_image_AdobeStock_75046304.jpeg",  style = "width: 100%; height: auto")#; max-height: 500px; object-fit: contain;
+          tags$img(src="www/mod_about_image_AdobeStock_75046304.jpeg",  style = "width: 100%; height: auto")#; max-height: 500px; object-fit: contain;
         )
         )
       ),
@@ -48,17 +48,17 @@ mod_welcome_page_ui <- function(id){
         collapsible = TRUE,
         collapsed = TRUE,
         status = "primary",
-        shiny::includeHTML(system.file("app/www/mod_welcome_overview_text.html", package = "SARforecastDLM"))
+        shiny::includeHTML(system.file("app/www/mod_about_overview_text.html", package = "SARforecastDLM"))
       )
     )
     )
 }
 
 
-#' welcome_page Server Functions
+#' about_page Server Functions
 #'
 #' @noRd
-mod_welcome_page_server <- function(id){
+mod_about_page_server <- function(id){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
@@ -66,7 +66,7 @@ mod_welcome_page_server <- function(id){
 }
 
 ## To be copied in the UI
-# mod_welcome_page_ui("welcome_page_1")
+# mod_about_page_ui("about_page_1")
 
 ## To be copied in the server
-# mod_welcome_page_server("welcome_page_1")
+# mod_about_page_server("about_page_1")
