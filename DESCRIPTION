@@ -9,7 +9,6 @@ Imports:
     dplyr,
     fresh,
     golem (>= 0.4.1),
-    leaflet,
     magrittr,
     MARSS,
     plotly,

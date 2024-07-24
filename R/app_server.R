@@ -9,7 +9,6 @@ app_server <- function(input, output, session) {
 
   ## About page
   mod_about_page_server("about_page_1")
-  mod_about_submodule_leaflet_map_server("leaflet_map_1")
 
   #main page
   dataselect_reactives<- mod_mainpage_submodule_dataselection_server("submodule_dataselection_1")
