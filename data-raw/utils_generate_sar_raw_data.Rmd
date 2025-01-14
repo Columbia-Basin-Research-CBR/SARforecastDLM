@@ -1,0 +1,294 @@
+---
+title: "SARforecastDLM"
+subtitle: "Code to generate sar_raw_data file"
+output: html_document
+date: "2025-01-13"
+---
+
+Objective: To generate the base data files for the SARforecastDLM package which include: 
+
+- `sar_raw_data.rda`: includes all years of sar per method and index in one file -- used to model (`mod_mainpage_fct_forecast_model.R`) based on user selected years of input to generate `mod_mainpage_fct_forecast_compare_plot.R`
+
+
+To update sar_raw_data, this script is setup up to call all new covariate data and then run through each SAR method to append into a single data file. Best to run in order-- will have to recode slighlty to update a single covariate/sar 
+
+```{r load_libraries}
+library(tidyverse)
+library(here)
+library(MARSS)
+library(rerddap) #import data from ERDDAP
+library(readxl) #import excel files--NCBI
+```
+
+# Covariate data
+
+## Northern Copepod Biomass 
+- Years: 1997 to current
+```{r load_northern_copepod_biomass_data}
+
+#Northern copepod biomass data
+#NCBI<-read_csv(here("data-raw", "northern_copepod_biomass_newportOR.csv")) 
+
+url<-"https://www.fisheries.noaa.gov/s3/2023-10/TempOxyNoSo-10232023.xlsx"
+
+# Download the file to a temporary location
+temp_file <- tempfile(fileext = ".xlsx")
+download.file(url, temp_file, mode = "wb")
+
+ncbi_raw<-read_excel(temp_file)
+
+
+# Currently set to only pull April data but NOAA stoplight chart returns value for May - September. Future Research direction is attempting various month iterations.
+df_ncbi<-ncbi_raw %>% 
+  filter(Month == 4) %>% #select only april for now-- update with more research
+  group_by(Year) %>% 
+  summarise(value = mean(NORTHERN)) %>% 
+  select("year" = Year, value) %>% 
+  mutate(index = "NCBI")
+
+```
+
+## Index of Coastal Prey Biomass (ICPB) 
+
+- Years: 1998 to current
+- Indice is of Winter (January, February, March) Ichthyoplankton 
+
+- shared with JG via Elizabeth Daly - NOAA Affiliate see [Winter Ichthyoplankton via fisheries.noaa.gov](https://www.fisheries.noaa.gov/west-coast/science-data/2023-summary-ocean-ecosystem-indicators#winter-ichthyoplankton:~:text=at%20nearshore%20stations.-,Winter%20Ichthyoplankton,-The%202023%20winter). 
+
+- Data in-house 1998 to 2019, emailed for more up to date data and directed to NOAA Stoplight Table for up-to-date data.  
+
+- Since starts in 1998, will not include with SW SAR method, could look to older salmon prey biomass index (pre-ICPB). 
+
+```{r load_ICPB_data}
+#Northern copepod biomass data (in-house)
+# df_ICPB<-read_csv(here("data-raw", "IndexOfCoastalPreyBiomass.csv")) 
+ 
+#to pull directly from stoplight table 
+library(data.table)
+year <- 2024 #update most recent year
+url <- paste0("https://www.fisheries.noaa.gov/s3/2024-12/stoplight-raw-data-",year,".csv")
+raw_data<-fread(url, header = TRUE, check.names = FALSE)
+
+df_icpb<-raw_data %>% 
+  mutate(across(-1, as.numeric)) %>%
+  pivot_longer(-1, names_to = "year", values_to = "value") %>% 
+  filter(`Ecosystem Indicators` == "Nearshore Ichthyoplankton\nLog(mg C 1,000 m-3; Jan-Mar)") %>% 
+  select(year, value) %>% 
+  mutate(index = "ICPB") %>% 
+  mutate(year = as.integer(year))
+```
+
+## Coastal Upwelling Index (CUI)
+ - Years: 1964 to current
+```{r load_cui_data}
+### ERDAPP, NOAA upwelling indice CUI
+# Set the URL of the ERDDAP server
+url <- "https://upwell.pfeg.noaa.gov/erddap/"
+
+# Get information about the erdCUTI dataset
+info <- info(datasetid = "erdUI45mo", url = url)
+info # copy max range value from metadata
+
+# Download the dataset
+dat <- griddap(info,
+               time = c("1964-01-01T00:00:00Z", "2024-11-15T00:00:00Z"), #currently pulling all data to date (adjust as needed)
+               latitude = c(45,45)
+)
+
+# format time and lat/long
+df_cui_raw<-dat$data %>% 
+  mutate(time.day = lubridate::ymd_hms(time),
+         year = year(time.day),
+         month = month(time.day),
+         day = day(time.day), 
+         adjlong = longitude-360) #set to -180 to 180
+
+## only include april CUI from ERDAPP data (for now)
+df_cui<-df_cui_raw %>% 
+  filter(month == 4) %>% 
+  select(year, upwelling_index) %>% 
+    rename("value" = upwelling_index)  %>%
+  mutate(index = "CUI")
+```
+
+
+## CUTI
+- Years: 1988 to current
+
+```{r load_cuti_data}
+
+#load CUTI
+# Set the URL of the ERDDAP server
+#url <- "https://upwell.pfeg.noaa.gov/erddap/"
+
+# Get information about the erdCUTI dataset
+info <- info(datasetid = "erdCUTImonthly", url = url)
+info #copy max time range from metadata
+
+# Download the dataset
+dat <- griddap(info,
+               time = c("1988-01-15T00:00:00Z", "2024-09-15T00:00:00Z"), #currently pulling all data to date
+               latitude = c(45,45)
+)
+
+
+df_cuti<-dat$data %>% 
+  mutate(time.day = lubridate::ymd_hms(time),
+         year = year(time.day),
+         month = month(time.day),
+         day = day(time.day)) %>% 
+  filter(month == 4) %>% 
+  select(year, CUTI)  %>% 
+  rename(value = "CUTI") %>% 
+  mutate(index = "CUTI")
+```
+
+
+# SAR methods
+All sar datasets have an additional blank logit.s year for ahead forecast in shiny app. 
+
+
+## Scheuerell and Williams (2005) 
+- Years: 1964 to 2005
+- Loaded data via  `SalmonSurvCUI`, `MARSS` package
+
+```{r load_MARSS_sar_data}
+## load the data
+data(SalmonSurvCUI, package = "MARSS")
+
+sar_raw_data <- SalmonSurvCUI %>% 
+  mutate(index = "CUI",
+         sar.method = "Scheurell and Williams (2005)") %>% 
+  rename("value" = CUI.apr) %>% 
+  mutate(year = as.numeric(year),
+         value = as.numeric(value)) %>% 
+        add_row(year = 2006, logit.s = NA, sar.method = "Scheurell and Williams (2005)", value = NA, index = "CUI") %>%  #add 2006 NA row for ahead forecast
+  # Join with df_cui (for 2006 empty year)
+  left_join(df_cui, by = c("year", "index")) %>% 
+  # Replace NA in value.x with value.y
+  mutate(
+    value = ifelse(is.na(value.x), value.y, value.x)
+  ) %>% 
+  # Clean up unnecessary columns
+  select(-value.x, -value.y)
+
+#join with CUTI data only (others do not have enough older years overlap), includes NA for 2006
+sar_raw_data<-sar_raw_data %>% 
+  select(-c(index, value)) %>% 
+  inner_join(df_cuti, by = "year") %>% 
+  bind_rows(sar_raw_data)
+
+
+```
+
+## CBR DART SAR data
+To generate CBR sar data, used https://www.cbr.washington.edu/dart/query/pit_sar_esu query tool with selections: 
+  - Lower Granite (All) to Lower Granite Adult
+  - Chinook Snake R Spring/Summer ESU
+  - Rear Type : Wild
+  - Adult Detections : Exclude 0,1-Year Adult Detections
+  - Set Annual Summary Table Group Type: by Release Site
+  - download Pooled by Year SAR csv file link
+  - downloaded, saved in `data-raw/SAR` folder, and renamed `LGRLGA_allpassage_wild_spsu_chinook.csv` 
+```{r load_dart_sar_data}
+#generated new file 1/13/25 with updated years of sar (2000 to 2021) changed values from previous `LGRtoLGA_allpass_W_spsu_ch.csv` file (added 2000-2001; updated 2021 sar values)
+
+# df.cbr.raw<-read_csv(here("data-raw/SAR", "LGRtoLGA_allpass_W_spsu_ch.csv"))
+df.cbr.raw<-read_csv(here("data-raw", "LGRLGA_allpassage_wild_spsu_chinook.csv")) %>% 
+  drop_na() %>% 
+  select(year, meanSAR) %>% #drop CBR notes and NA values
+  mutate(year = as.integer(year)) # %>%
+  # filter( between(year, 2002, 2020)) #Previous version: 2021 does not have ocean4 reported--keep to 2020? Why only including 2002? Removed to include all years of data
+
+# must divide meanSAR /100 to get 0 to 1 and then apply logit/transform since DART sar calculated as adultCount/juvCount*100
+df.cbr<-df.cbr.raw %>% 
+  mutate(logit.s = qlogis(meanSAR/100)) %>% 
+  select(-meanSAR) %>%
+  mutate(sar.method = "DART") %>% 
+  add_row(year = max(.$year)+1, logit.s = NA, sar.method = "DART") #add next year with NA
+
+
+#CUI
+df.cbr.cui<-df.cbr %>% inner_join(df_cui, by = "year")
+
+#CUTI
+df.cbr.cuti<-df.cbr %>% inner_join(df_cuti, by = "year")
+
+#ICPB
+df.cbr.icpb<-df.cbr %>% inner_join(df_icpb, by = "year") 
+#NCBI
+df.cbr.ncbi<-df.cbr %>% inner_join(df_ncbi, by = "year") 
+
+
+#join all indices
+df.cbr<-rbind(df.cbr.cui, df.cbr.cuti, df.cbr.icpb, df.cbr.ncbi) 
+
+
+#add to sar_raw_updated with DART sar method with CUI,CUTI, NCBI
+sar_raw_data<-rbind(sar_raw_data, df.cbr)
+```
+
+## CJS estimated survival
+- Years: 1994 to 2019 , but update with newer CJS generated data? 2002 - 2021
+- This section uses data generated via cjs-see cjs-model-code-no-covariates.R for code
+```{r load_cjs_sar_data}
+
+df_cjs_raw<-read_csv(here("data-raw/", "LGR_LGA_surv.csv")) #adding CJS sourced code and adding additional empty year 2020 -see cjs-model-code-no-covariates.R for code
+
+df.cjs <- df_cjs_raw %>% 
+  select(year, median) %>% 
+  mutate(logit.s = qlogis(median/100)) %>% #requires   mutate(s = plogis(logit.s)*100) %>% #convert back to probability
+  select(-median) %>% 
+  mutate(sar.method = "CJS") %>% 
+  add_row(year = max(.$year)+1, logit.s = NA, sar.method = "CJS") #add 2020 with NA
+
+
+#CUI
+df.cjs.cui<- df.cjs %>% inner_join(df_cui, by = "year") 
+#CUTI
+df.cjs.cuti<-df.cjs %>% inner_join(df_cuti, by = "year")
+#ICPB
+df.cjs.icpb<-df.cjs %>% inner_join(df_icpb, by = "year") #keep 2020
+#NCBI
+df.cjs.ncbi<-df.cjs %>% inner_join(df_ncbi, by = "year") #keep 2020
+
+
+#join all indices
+df.cjs<-rbind(df.cjs.cui, df.cjs.cuti, df.cjs.icpb, df.cjs.ncbi) 
+
+#add to sar_raw_data
+sar_raw_data<-rbind(sar_raw_data, df.cjs)
+```
+
+# save (update) sar_raw_data
+As of 6/20/24 adding NCBI back into DLM as place holder for ICPB data. NCBI is publicly available whereas ICPB is not. Updated 1/13/25, per email exchange with E. Daly, ICPB data is publically available through NOAA Stoplight Chart. Adding back into option list with NCBI.  
+
+```{r check_save_sar_raw_data}
+#check each sar method has correct years and indices
+sar_raw_data%>% 
+  group_by(sar.method, index) %>% 
+  summarise(n_distinct(year))
+
+
+sar_raw_data %>% 
+  ggplot(aes(x = year)) +
+  geom_line(aes(y = logit.s, color = sar.method))+
+  geom_point(aes(y = logit.s, color = sar.method), shape = 21) +
+  labs(title = "Observed SAR by method pre-model input",
+       x = "Year",
+       y = "Value") +
+  theme_minimal()
+
+
+
+```
+
+
+```{r save_sar_raw_data}
+#save updated sar_raw_data
+usethis::use_data(sar_raw_data, overwrite = TRUE)
+
+
+head(sar_raw_data)
+```
+
