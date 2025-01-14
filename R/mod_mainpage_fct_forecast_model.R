@@ -1,11 +1,15 @@
 #' mainpage_fct_model_forecast
 #'
 #' @description A fct that runs the DLM with selected years
+#' @param data pre-generated data frame with all SAR and covariate data `data/sar_raw_data.rda`. Filtered to specific selection in function.
+#' @param years_selected maximum year selected via UI slider input to re-run model from min year to selected max year. Single value.
+#' @param index_selected user selected index from UI dropdown. Single value.
+#' @param sar_method_selected user selected SAR method from UI dropdown. Single value.
 #' @return returns a dataframe with forecasted values (+3) using the input years
 #'
 #' @noRd
 fct_forecast_model<-function(data, years_selected, index_selected, sar_method_selected){
-
+ print(years_selected)
   all_data<- data %>%
     dplyr::filter(#dplyr::between(year, min(year), max(year)),
                   index == index_selected,
@@ -170,3 +174,6 @@ fct_forecast_model<-function(data, years_selected, index_selected, sar_method_se
 
 }
 
+
+
+# fct_forecast_model(data = sar_raw_data, years_selected = 2005,index_selected = "CUI", sar_method_selected = "Scheurell and Williams (2005)")
