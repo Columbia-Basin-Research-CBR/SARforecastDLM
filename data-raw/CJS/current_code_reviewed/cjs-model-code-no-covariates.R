@@ -12,6 +12,7 @@ library(shinystan)
 # data is currently sourcing aspects of JG shared CJS code files.
 #It uses the same data shared for sizepred code and then follows similar code extraction found in the CJS code Survival Results 2022-12-03.R
 #but removes covariates by only including intercept for the covariate matrix and setting NX = 0
+  ##update with multi species CJS fish data?
 
 # Data conditioned on juvenile detection at LGR, and with length observed at LGR
 # (note acronym change from LGR to LWG in manuscript)
@@ -21,7 +22,10 @@ library(shinystan)
 
 
 # 1. years for random effects, passage type as covariate
-load(here("data-raw/SAR", "DATAXrivocadm_RT1FW_1994_2019_years_221123.RData") )
+load(here("data-raw/SAR", "DATAXrivocadm_RT1FW_1994_2019_years_221123.RData") ) # previous version pulled data from HydroSurvDOYTEMP shared code. Update with new CJS data through 2024
+# 1/13/25: this version is from multi-spp CJS repo (pulled from Hydro2HydroLCM) from 2002 - 2021, use in place? Include prior to 2001 years? Needs to be aggregated to sum n per detection history?
+load(here("data-raw/SAR", "DATAXrivocadm_WSSCh_RT1FW_allcovs_pitph_2001_2021_241102.RData") )
+
 DATAXm <- DATAXrivocadm_RT1FW_years
 CH <- DATAXm[,1:6]
 reaches <- 5
