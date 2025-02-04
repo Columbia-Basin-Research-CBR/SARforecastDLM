@@ -46,6 +46,14 @@ df_ncbi<-ncbi_raw %>%
   select("year" = Year, value) %>% 
   mutate(index = "NCBI")
 
+ggplot(df_ncbi, aes(x = year, y = value)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Northern Copepod Biomass",
+       x = "Year",
+       y = "Biomass (mg C m-3)[April]") +
+  theme_minimal()
+
 ```
 
 ## Index of Coastal Prey Biomass (ICPB) 
@@ -156,13 +164,14 @@ All sar datasets have an additional blank logit.s year for ahead forecast in shi
 ## load the data
 data(SalmonSurvCUI, package = "MARSS")
 
+
 sar_raw_data <- SalmonSurvCUI %>% 
   mutate(index = "CUI",
          sar.method = "Scheurell and Williams (2005)") %>% 
   rename("value" = CUI.apr) %>% 
   mutate(year = as.numeric(year),
          value = as.numeric(value)) %>% 
-        add_row(year = 2006, logit.s = NA, sar.method = "Scheurell and Williams (2005)", value = NA, index = "CUI") %>%  #add 2006 NA row for ahead forecast
+        add_row(year = max(.$year)+1, logit.s = NA, sar.method = "Scheurell and Williams (2005)", value = NA, index = "CUI") %>%  #add 2006 NA row for ahead forecast
   # Join with df_cui (for 2006 empty year)
   left_join(df_cui, by = c("year", "index")) %>% 
   # Replace NA in value.x with value.y
@@ -202,7 +211,7 @@ df.cbr.raw<-read_csv(here("data-raw", "LGRLGA_allpassage_wild_spsu_chinook.csv")
 
 # must divide meanSAR /100 to get 0 to 1 and then apply logit/transform since DART sar calculated as adultCount/juvCount*100
 df.cbr<-df.cbr.raw %>% 
-  mutate(logit.s = qlogis(meanSAR/100)) %>% 
+  mutate(logit.s = qlogis(meanSAR/100)) %>% #
   select(-meanSAR) %>%
   mutate(sar.method = "DART") %>% 
   add_row(year = max(.$year)+1, logit.s = NA, sar.method = "DART") #add next year with NA
@@ -270,25 +279,46 @@ sar_raw_data%>%
   summarise(n_distinct(year))
 
 
+# plot sar on logit scale
 sar_raw_data %>% 
+  filter(index == "CUI") %>% 
   ggplot(aes(x = year)) +
   geom_line(aes(y = logit.s, color = sar.method))+
   geom_point(aes(y = logit.s, color = sar.method), shape = 21) +
-  labs(title = "Observed SAR by method pre-model input",
+  labs(title = "Observed SAR by method",
        x = "Year",
-       y = "Value") +
+       y = "SAR (logs-odd)") +
+  theme_minimal()
+
+#plot inverse logit to check
+sar_raw_data %>% 
+  mutate(sar = plogis(logit.s)*100) %>% 
+  filter(index == "CUI") %>% 
+    ggplot(aes(x = year)) +
+  geom_line(aes(y = sar, color = sar.method))+
+  geom_point(aes(y = sar, color = sar.method), shape = 21) +
+  labs(title = "Observed SAR by method",
+       x = "Year",
+       y = "SAR (%)") +
   theme_minimal()
 
 
-
+#inverse matches original data --yes
+df_marss<-SalmonSurvCUI %>% 
+  mutate(sar = plogis(logit.s))
+ggplot() +
+  geom_line(data = df_marss, aes(x = year, y = sar*100), color = "red") + #, color = "Scheurell and Williams (2005)")) +
+  geom_line(data = df_cjs_raw, aes(x = year, y = median), color = "blue") + #, color = "CJS")) +
+  geom_line(data = df.cbr.raw, aes(x = year, y = meanSAR), color = "green") + #, color = "DART")) +
+    labs(title = "Observed SAR by method",
+       x = "Year",
+       y = "SAR (%)") +
+  theme_minimal()
 ```
 
 
 ```{r save_sar_raw_data}
 #save updated sar_raw_data
 usethis::use_data(sar_raw_data, overwrite = TRUE)
-
-
-head(sar_raw_data)
 ```
 

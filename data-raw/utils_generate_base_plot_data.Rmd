@@ -257,6 +257,47 @@ base_plot_data %>%
        y = "Value") +
   theme_bw()
 
+
+#observed vs predicted
+base_plot_data %>% 
+  ggplot(aes(y = y, x = estimate)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  labs(y = "Observed", x = "Predicted") +
+  # xlim(0,5) +
+  # ylim(0,5) +
+  facet_grid(index~sar.method) + 
+  theme_bw()
+
+sar.method <-  "CJS" #"DART" #"Scheurell and Williams (2005)"
+index <- "CUI"
+sub.qq<-filter(base_plot_data, sar.method == !!sar.method & index == !!index)
+
+
+qqnorm(sub.qq$y)
+qqline(sub.qq$y)
+
+plot(density(sub.qq.marss$y, na.rm = TRUE), 
+     main = "Density Plot", 
+     xlab = "Values")
+curve(dnorm(x, mean(sub.qq.marss$y, na.rm = TRUE), sd(sub.qq.marss$y, na.rm = TRUE)), 
+      col = "red", 
+      add = TRUE)
+
+plot(density(sub.qq.dart$y, na.rm = TRUE), 
+     main = "Density Plot", 
+     xlab = "Values")
+curve(dnorm(x, mean(sub.qq.dart$y, na.rm = TRUE), sd(sub.qq.dart$y, na.rm = TRUE)), 
+      col = "red", 
+      add = TRUE)
+
+plot(density(sub.qq.cjs$y, na.rm = TRUE), 
+     main = "Density Plot", 
+     xlab = "Values")
+curve(dnorm(x, mean(sub.qq.cjs$y, na.rm = TRUE), sd(sub.qq.cjs$y, na.rm = TRUE)), 
+      col = "red", 
+      add = TRUE)
+
 ```
 
 
@@ -264,5 +305,6 @@ base_plot_data %>%
 ```{r save_data_files, eval=FALSE}
 usethis::use_data(base_plot_data, overwrite = TRUE)
 usethis::use_data(base_plot_data, overwrite = TRUE)
+
 ```
 
