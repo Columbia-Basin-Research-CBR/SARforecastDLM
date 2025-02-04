@@ -49,35 +49,35 @@ ggcorrplot(cor_matrix,
            title = "Correlation Matrix of logit.s and value")
 
 
-#pairs
-for (sar in unique(sar_raw_data$sar.method)) {
-  pairs_data <- sar_raw_data %>% 
-    filter(sar.method == !!sar) %>% 
-    pivot_wider(names_from = index, values_from = value) %>% 
-    select(-c(year, sar.method))
-  
-    num_cols <- ncol(pairs_data)
-  
-  # Select the columns dynamically
-  selected_cols <- pairs_data[,c(1:num_cols)]
-  
- p<- ggpairs(selected_cols, title = paste("Scatterplot Matrix of logit.s and value for", sar))
-  
- print(p)
-}
+# #pairs
+# for (sar in unique(sar_raw_data$sar.method)) {
+#   pairs_data <- sar_raw_data %>% 
+#     filter(sar.method == !!sar) %>% 
+#     pivot_wider(names_from = index, values_from = value) %>% 
+#     select(-c(year, sar.method))
+#   
+#     num_cols <- ncol(pairs_data)
+#   
+#   # Select the columns dynamically
+#   selected_cols <- pairs_data[,c(1:num_cols)]
+#   
+#  p<- ggpairs(selected_cols, title = paste("Scatterplot Matrix of logit.s and value for", sar))
+#   
+#  print(p)
+# }
 ```
 
 
 
 ```{r model_functions }
-
 fct_model_single_no_cov<-function(data, index, sar){
 
   data_train<-data %>% 
   filter(sar.method == !!sar, 
          index == !!index) %>% 
-  drop_na()
-  
+  drop_na() %>% 
+    select(-c(index, value))
+
   years <- data_train$year
   ## number of years of data
   TT <- length(years)
@@ -85,16 +85,16 @@ fct_model_single_no_cov<-function(data, index, sar){
   dat <- matrix(data_train$logit.s, nrow = 1)
 
   ## number of regr params: slope 
-  m <- 1
+  m <- 1 #changed to intercept only
 
 
   ### build DLM
 
   ## for process eqn
-  B <- diag(m)                        ## 2x2; Identity
-  U <- matrix(0, nrow = m, ncol = 1)  ## 2x1; both elements = 0
-  Q <- matrix(list(0), m, m)          ## 2x2; all 0 for now
-  diag(Q) <- c("q.alpha")   ## 1x1; diag = (q1) #
+  B <- diag(m)                        ## 2x2; Identity -> changed to 1x1
+  U <- matrix(0, nrow = m, ncol = 1)  ## 2x1; both elements = 0 -> changed to 1x1
+  Q <- matrix(list(0), m, m)          ## 2x2; all 0 for now -> changed to 1x1
+  diag(Q) <- c("q.alpha")   ## 1x1; diag = (q1) #-> changed to only include alpha
 
   ## for observation eqn
   A <- matrix(0)               ## 1x1; scalar = 0
@@ -117,7 +117,10 @@ fct_model_single_no_cov<-function(data, index, sar){
     dlm_train = dlm_train
   )
 }
+```
 
+
+```{r model_functions_withcov }
 fct_model_single<-function(data, index, sar){
   data_train<-data %>% 
   filter(sar.method == !!sar, 
@@ -189,7 +192,7 @@ fct_model_single<-function(data, index, sar){
 
 # d. SAR predictions with no CUI, longest time series possible for each of the three methods
 ```{r run_model_no_cov}
-fit_no_cov_sw<-fct_model_single_no_cov(data = sar_raw_data, index = "CUI", sar = "Scheuerell and Williams (2005)") 
+fit_no_cov_sw<-fct_model_single_no_cov(data = sar_raw_data, index = "CUI", sar = "Scheurell and Williams (2005)") 
 fit_no_cov_dart<-fct_model_single_no_cov(data = sar_raw_data, index = "CUI", sar = "DART")
 fit_no_cov_cjs<-fct_model_single_no_cov(data = sar_raw_data, index = "CUI", sar = "CJS")
 ```
@@ -202,7 +205,7 @@ title(main = "SAR: Scheuerell and Williams (2005), 1964:2005 with no covariate",
 
 # Plot fit_no_cov_dart with a title
 plot(fit_no_cov_dart,plot.type = c("fitted.ytT"), silent = TRUE)
-title(main = "SAR: DART, 2002:2020 with no covariate", line = 2)
+title(main = "SAR: DART, 2002:2021 with no covariate", line = 2)
 
 # Plot fit_no_cov_cjs with a title
 plot(fit_no_cov_cjs, plot.type = c("fitted.ytT"), silent = TRUE)
@@ -210,10 +213,34 @@ title(main = "SAR: CJS, 1998:2019 with no covariate ")
 
 ```
 
+# e. 
+```{r}
+sar_raw_data %>% 
+  filter(index == "CUI") %>%
+  group_by(sar.method, index) %>%
+  summarise(min(year),
+            max(year))
+
+sar_raw_data_00_05<-sar_raw_data %>% 
+  filter(year >= 2000 & year <= 2005)
+
+fit_no_cov_sw_00_05<-fct_model_single_no_cov(data = sar_raw_data_00_05, index = "CUI", sar = "Scheurell and Williams (2005)")
+fit_no_cov_dart_00_05<-fct_model_single_no_cov(data = sar_raw_data_00_05, index = "CUI", sar = "DART")
+fit_no_cov_cjs_00_05<-fct_model_single_no_cov(data = sar_raw_data_00_05, index = "CUI", sar = "CJS")
+```
+```{r}
+plot(fit_no_cov_sw_00_05, plot.type = c("fitted.ytT"), silent = TRUE)
+title(main = "SAR: Scheuerell and Williams (2005), 2000:2005 with no covariate", line =2)
+plot(fit_no_cov_dart_00_05, plot.type = c("fitted.ytT"), silent = TRUE)
+title(main = "SAR: DART, 2000:2005 with no covariate", line = 2)
+plot(fit_no_cov_cjs_00_05, plot.type = c("fitted.ytT"), silent = TRUE)
+title(main = "SAR: CJS, 2000:2005 with no covariate")
+```
+
 # f. Same as d (longest time series per SAR), but with CUI
 
 ```{r run_model_with_CUI}
-fit_sw<-fct_model_single(data = sar_raw_data, index = "CUI", sar = "Scheuerell and Williams (2005)") 
+fit_sw<-fct_model_single(data = sar_raw_data, index = "CUI", sar = "Scheurell and Williams (2005)") 
 fit_dart<-fct_model_single(data = sar_raw_data, index = "CUI", sar = "DART")
 fit_cjs<-fct_model_single(data = sar_raw_data, index = "CUI", sar = "CJS")
 ```
@@ -235,6 +262,25 @@ plot(fit_cjs$dlm_train, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
 plot(fit_cjs$forecast_df)
 title(main = "SAR: CJS, 1998:2019 with CUI")
 
+```
+
+# g. Same as e (5 year overlap), but with CUI
+
+```{r}
+fit_sw_00_05<-fct_model_single(data = sar_raw_data_00_05, index = "CUI", sar = "Scheurell and Williams (2005)")
+fit_dart_00_05<-fct_model_single(data = sar_raw_data_00_05, index = "CUI", sar = "DART")
+fit_cjs_00_05<-fct_model_single(data = sar_raw_data_00_05, index = "CUI", sar = "CJS")
+```
+```{r}
+plot(fit_sw_00_05$dlm_train, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
+plot(fit_sw_00_05$forecast_df)
+title(main = "SAR: Scheuerell and Williams (2005), 2000:2005 with CUI", line =2)
+plot(fit_dart_00_05$dlm_train, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
+plot(fit_dart_00_05$forecast_df)
+title(main = "SAR: DART, 2000:2005 with CUI", line = 2)
+plot(fit_cjs_00_05$dlm_train, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
+plot(fit_cjs_00_05$forecast_df)
+title(main = "SAR: CJS, 2000:2005 with CUI")
 ```
 
 
