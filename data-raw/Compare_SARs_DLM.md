@@ -7,7 +7,7 @@ each of the three methods e. Ditto, but using the same start and end
 years for each of the three time series f. Same as d, but with CUI g.
 Same as e, but with CUI Then can talk further at next meeting
 
-![](Diagnostics_data_files/figure-gfm/correlation%20plots-1.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/correlation%20plots-1.png)<!-- -->
 
 ``` r
 fct_model_single_no_cov<-function(data, index, sar){
@@ -202,7 +202,7 @@ fit_no_cov_cjs<-fct_model_single_no_cov(data = sar_raw_data, index = "CUI", sar 
     ## Standard errors have not been calculated. 
     ## Use MARSSparamCIs to compute CIs and bias estimates.
 
-![](Diagnostics_data_files/figure-gfm/run_model_no_cov_plots-1.png)<!-- -->![](Diagnostics_data_files/figure-gfm/run_model_no_cov_plots-2.png)<!-- -->![](Diagnostics_data_files/figure-gfm/run_model_no_cov_plots-3.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/run_model_no_cov_plots-1.png)<!-- -->![](Compare_SARs_DLM_files/figure-gfm/run_model_no_cov_plots-2.png)<!-- -->![](Compare_SARs_DLM_files/figure-gfm/run_model_no_cov_plots-3.png)<!-- -->
 
 # e. Ditto, but using the same start and end years for each of the three time series
 
@@ -291,21 +291,21 @@ plot(fit_no_cov_sw_00_05, plot.type = c("fitted.ytT"), silent = TRUE)
 title(main = "SAR: Scheuerell and Williams (2005), 2000:2005 with no covariate", line =2)
 ```
 
-![](Diagnostics_data_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
 ``` r
 plot(fit_no_cov_dart_00_05, plot.type = c("fitted.ytT"), silent = TRUE)
 title(main = "SAR: DART, 2000:2005 with no covariate", line = 2)
 ```
 
-![](Diagnostics_data_files/figure-gfm/unnamed-chunk-2-2.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/unnamed-chunk-2-2.png)<!-- -->
 
 ``` r
 plot(fit_no_cov_cjs_00_05, plot.type = c("fitted.ytT"), silent = TRUE)
 title(main = "SAR: CJS, 2000:2005 with no covariate")
 ```
 
-![](Diagnostics_data_files/figure-gfm/unnamed-chunk-2-3.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/unnamed-chunk-2-3.png)<!-- -->
 
 # f. Same as d (longest time series per SAR), but with CUI
 
@@ -401,11 +401,11 @@ fit_cjs<-fct_model_single(data = sar_raw_data, index = "CUI", sar = "CJS")
 
     ## MARSSresiduals.tT reported warnings. See msg element or attribute of returned residuals object.
 
-![](Diagnostics_data_files/figure-gfm/run_model_with_CUI_plots-1.png)<!-- -->![](Diagnostics_data_files/figure-gfm/run_model_with_CUI_plots-2.png)<!-- -->![](Diagnostics_data_files/figure-gfm/run_model_with_CUI_plots-3.png)<!-- -->![](Diagnostics_data_files/figure-gfm/run_model_with_CUI_plots-4.png)<!-- -->![](Diagnostics_data_files/figure-gfm/run_model_with_CUI_plots-5.png)<!-- -->![](Diagnostics_data_files/figure-gfm/run_model_with_CUI_plots-6.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/run_model_with_CUI_plots-1.png)<!-- -->![](Compare_SARs_DLM_files/figure-gfm/run_model_with_CUI_plots-2.png)<!-- -->![](Compare_SARs_DLM_files/figure-gfm/run_model_with_CUI_plots-3.png)<!-- -->![](Compare_SARs_DLM_files/figure-gfm/run_model_with_CUI_plots-4.png)<!-- -->![](Compare_SARs_DLM_files/figure-gfm/run_model_with_CUI_plots-5.png)<!-- -->![](Compare_SARs_DLM_files/figure-gfm/run_model_with_CUI_plots-6.png)<!-- -->
 
     ## MARSSresiduals.tT reported warnings. See msg element or attribute of returned residuals object.
 
-![](Diagnostics_data_files/figure-gfm/run_model_with_CUI_plots-7.png)<!-- -->![](Diagnostics_data_files/figure-gfm/run_model_with_CUI_plots-8.png)<!-- -->![](Diagnostics_data_files/figure-gfm/run_model_with_CUI_plots-9.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/run_model_with_CUI_plots-7.png)<!-- -->![](Compare_SARs_DLM_files/figure-gfm/run_model_with_CUI_plots-8.png)<!-- -->![](Compare_SARs_DLM_files/figure-gfm/run_model_with_CUI_plots-9.png)<!-- -->
 
 # g. Same as e (5 year overlap), but with CUI
 
@@ -510,45 +510,48 @@ fit_cjs_00_05<-fct_model_single(data = sar_raw_data_00_05, index = "CUI", sar = 
     ## [1] "New data: covariate data  -10 with last survival -4.71977097114028"
 
 ``` r
+#Scheuerell and Williams (2005)
 plot(fit_sw_00_05$dlm_train, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
 ```
 
-![](Diagnostics_data_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->![](Diagnostics_data_files/figure-gfm/unnamed-chunk-4-2.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->![](Compare_SARs_DLM_files/figure-gfm/unnamed-chunk-4-2.png)<!-- -->
 
 ``` r
 plot(fit_sw_00_05$forecast_df)
 title(main = "SAR: Scheuerell and Williams (2005), 2000:2005 with CUI", line =2)
 ```
 
-![](Diagnostics_data_files/figure-gfm/unnamed-chunk-4-3.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/unnamed-chunk-4-3.png)<!-- -->
 
 ``` r
+#DART
 plot(fit_dart_00_05$dlm_train, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
 ```
 
     ## MARSSresiduals.tT reported warnings. See msg element or attribute of returned residuals object.
 
-![](Diagnostics_data_files/figure-gfm/unnamed-chunk-4-4.png)<!-- -->![](Diagnostics_data_files/figure-gfm/unnamed-chunk-4-5.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/unnamed-chunk-4-4.png)<!-- -->![](Compare_SARs_DLM_files/figure-gfm/unnamed-chunk-4-5.png)<!-- -->
 
 ``` r
 plot(fit_dart_00_05$forecast_df)
 title(main = "SAR: DART, 2000:2005 with CUI", line = 2)
 ```
 
-![](Diagnostics_data_files/figure-gfm/unnamed-chunk-4-6.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/unnamed-chunk-4-6.png)<!-- -->
 
 ``` r
+#CJS
 plot(fit_cjs_00_05$dlm_train, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
 ```
 
-![](Diagnostics_data_files/figure-gfm/unnamed-chunk-4-7.png)<!-- -->![](Diagnostics_data_files/figure-gfm/unnamed-chunk-4-8.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/unnamed-chunk-4-7.png)<!-- -->![](Compare_SARs_DLM_files/figure-gfm/unnamed-chunk-4-8.png)<!-- -->
 
 ``` r
 plot(fit_cjs_00_05$forecast_df)
 title(main = "SAR: CJS, 2000:2005 with CUI")
 ```
 
-![](Diagnostics_data_files/figure-gfm/unnamed-chunk-4-9.png)<!-- -->
+![](Compare_SARs_DLM_files/figure-gfm/unnamed-chunk-4-9.png)<!-- -->
 
 ------------------------------------------------------------------------
 

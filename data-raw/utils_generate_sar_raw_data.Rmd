@@ -167,11 +167,11 @@ data(SalmonSurvCUI, package = "MARSS")
 
 sar_raw_data <- SalmonSurvCUI %>% 
   mutate(index = "CUI",
-         sar.method = "Scheurell and Williams (2005)") %>% 
+         sar.method = "Scheuerell and Williams (2005)") %>% 
   rename("value" = CUI.apr) %>% 
   mutate(year = as.numeric(year),
          value = as.numeric(value)) %>% 
-        add_row(year = max(.$year)+1, logit.s = NA, sar.method = "Scheurell and Williams (2005)", value = NA, index = "CUI") %>%  #add 2006 NA row for ahead forecast
+        add_row(year = max(.$year)+1, logit.s = NA, sar.method = "Scheuerell and Williams (2005)", value = NA, index = "CUI") %>%  #add 2006 NA row for ahead forecast
   # Join with df_cui (for 2006 empty year)
   left_join(df_cui, by = c("year", "index")) %>% 
   # Replace NA in value.x with value.y
@@ -307,7 +307,7 @@ sar_raw_data %>%
 df_marss<-SalmonSurvCUI %>% 
   mutate(sar = plogis(logit.s))
 ggplot() +
-  geom_line(data = df_marss, aes(x = year, y = sar*100), color = "red") + #, color = "Scheurell and Williams (2005)")) +
+  geom_line(data = df_marss, aes(x = year, y = sar*100), color = "red") + #, color = "Scheuerell and Williams (2005)")) +
   geom_line(data = df_cjs_raw, aes(x = year, y = median), color = "blue") + #, color = "CJS")) +
   geom_line(data = df.cbr.raw, aes(x = year, y = meanSAR), color = "green") + #, color = "DART")) +
     labs(title = "Observed SAR by method",
