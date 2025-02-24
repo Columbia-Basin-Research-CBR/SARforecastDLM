@@ -191,7 +191,7 @@ fct_model_single<-function(data, index, sar){
 # d. SAR predictions with no CUI, longest time series possible for each of the three methods
 ```{r run_model_no_cov}
 fit_no_cov_sw<-fct_model_single_no_cov(data = sar_raw_data, index = "CUI", sar = "Scheuerell and Williams (2005)") 
-fit_no_cov_dart<-fct_model_single_no_cov(data = sar_raw_data %>% filter(between(year, 2002,2021)), index = "CUI", sar = "DART") #if include 2000 & 2001 results are nonsense
+fit_no_cov_dart<-fct_model_single_no_cov(data = sar_raw_data, index = "CUI", sar = "DART") #if include 2000 & 2001 results are nonsense
 fit_no_cov_cjs<-fct_model_single_no_cov(data = sar_raw_data, index = "CUI", sar = "CJS")
 ```
 
