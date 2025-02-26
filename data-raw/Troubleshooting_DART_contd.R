@@ -1,11 +1,12 @@
 #' DLM -- only DART
-#' This script looks at changing Q and R to different varcov structurs to troubleshoot
+#' This script looks at changing Q and R to different varcov structures to troubleshoot
 #' the poor convergence of the DART dataset from 2000 to 2021 using a DLM MARSS model.
 #' The first fit shows all years (2000-2021) of data including an outlier year 2001,
 #' the second fit removes 2001, and the third adds a covariate (CUI) to the model.
-#' Fit 1-3 use a diagonal and unequal Q and R. Removing 2001 allows the model to converge, but Q(2,2) goes to 0.
+#' Fit 1-3 use a diagonal and unequal Q. Removing 2001 allows the model to converge, but Q(2,2) goes to 0 eliminating X2 in the process error variance.
 #' The fourth fit allows Q to be unconstrained which allows the model to converge and Q does not go to 0.
 #' CUI seems to do little to explain the overall variability in the model, but is not 0.
+#' I added fit 5 to see if adding 2001 back in would allow the model to converge, but it did not. And I also included CJS (fit6) and Scheuerell and Williams (fit7) SARs for comparison.
 
 
 library(MARSS)
@@ -114,7 +115,7 @@ plot(fit4, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
 #'the effect of CUI covariate (X2) changes such that if survival increases, the effect of CUI covariate decreases?
 #'
 #'
-#####---- add 2001 back in ----#####
+#####---- add 2001 back in using Q unconstrained ----#####
 
 sar_dart<- sar_raw_data %>%
   filter(
@@ -139,21 +140,18 @@ fit5<- MARSS::MARSS(dat, inits = inits_list, model = mod_list)
 # no convergence for any Q structure, even unconstrained Q
 
 
-#####---- compare to CJS & SW----#####
+#####---- compare to CJS & SW with Q= diagonal and unequal----#####
 # CJS
+#update data and model inputs
 sar_cjs<- sar_raw_data %>%
-  filter(index == "CUI",sar.method == "CJS") %>% #select only dart/CUI data
-  drop_na() #remove 2022 used to forecast
+  filter(index == "CUI",sar.method == "CJS") %>%
+  drop_na()
 
-
-#data for DLM
 years <- sar_cjs$year
 TT <- length(years)
 dat <- matrix(sar_cjs$logit.s, nrow = 1)
 
-### build DLM
-
-m <- 2    ## state variables
+m <- 2
 index <- sar_cjs$value
 index_z <- matrix((index - mean(index)) / sqrt(var(index)), nrow = 1)
 B <- diag(m)
@@ -176,7 +174,7 @@ sar_cjs<- sar_raw_data %>%
 
 #Scheuerell and Williams (2005)
 
-#data for DLM
+# update data and model inputs
 sar_sw<- sar_raw_data %>%
   filter(index == "CUI",sar.method == "Scheuerell and Williams (2005)") %>%
   drop_na()
@@ -184,7 +182,6 @@ years <- sar_sw$year
 TT <- length(years)
 dat <- matrix(sar_sw$logit.s, nrow = 1)
 
-### build DLM
 index <- sar_sw$value
 index_z <- matrix((index - mean(index)) / sqrt(var(index)), nrow = 1)
 Z <- array(NA, c(1, m, TT))
