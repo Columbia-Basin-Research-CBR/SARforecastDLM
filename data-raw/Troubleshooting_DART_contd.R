@@ -137,3 +137,62 @@ Z[1,2,] <- index_z             ## Nx1; predictor variable
 mod_list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
 fit5<- MARSS::MARSS(dat, inits = inits_list, model = mod_list)
 # no convergence for any Q structure, even unconstrained Q
+
+
+#####---- compare to CJS & SW----#####
+# CJS
+sar_cjs<- sar_raw_data %>%
+  filter(index == "CUI",sar.method == "CJS") %>% #select only dart/CUI data
+  drop_na() #remove 2022 used to forecast
+
+
+#data for DLM
+years <- sar_cjs$year
+TT <- length(years)
+dat <- matrix(sar_cjs$logit.s, nrow = 1)
+
+### build DLM
+
+m <- 2    ## state variables
+index <- sar_cjs$value
+index_z <- matrix((index - mean(index)) / sqrt(var(index)), nrow = 1)
+B <- diag(m)
+U <- matrix(0, nrow = m, ncol = 1)
+Q <- "diagonal and unequal"
+A <- matrix(0)
+R <- matrix("r")
+Z <- array(NA, c(1, m, TT))
+Z[1,1,] <- rep(1, TT)
+Z[1,2,] <- index_z
+
+inits_list <- list(x0 = matrix(c(0), nrow = m))
+mod_list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
+fit6 <- MARSS::MARSS(dat, inits = inits_list, model = mod_list)
+
+plot(fit6, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
+sar_cjs<- sar_raw_data %>%
+  filter(index == "CUI",sar.method == "CJS") %>%
+  drop_na()
+
+#Scheuerell and Williams (2005)
+
+#data for DLM
+sar_sw<- sar_raw_data %>%
+  filter(index == "CUI",sar.method == "Scheuerell and Williams (2005)") %>%
+  drop_na()
+years <- sar_sw$year
+TT <- length(years)
+dat <- matrix(sar_sw$logit.s, nrow = 1)
+
+### build DLM
+index <- sar_sw$value
+index_z <- matrix((index - mean(index)) / sqrt(var(index)), nrow = 1)
+Z <- array(NA, c(1, m, TT))
+Z[1,1,] <- rep(1, TT)
+Z[1,2,] <- index_z
+
+inits_list <- list(x0 = matrix(c(0), nrow = m))
+mod_list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
+fit7 <- MARSS::MARSS(dat, inits = inits_list, model = mod_list)
+
+plot(fit7, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
