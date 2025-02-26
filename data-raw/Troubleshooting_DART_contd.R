@@ -1,7 +1,7 @@
 #' DLM -- only DART
 #' This script looks at changing Q and R to different varcov structures to troubleshoot
 #' the poor convergence of the DART dataset from 2000 to 2021 using a DLM MARSS model.
-#' The first fit shows all years (2000-2021) of data including an outlier year 2001,
+#' The first fit shows all years (2000-2021) of data including the influential year 2001,
 #' the second fit removes 2001, and the third adds a covariate (CUI) to the model.
 #' Fit 1-3 use a diagonal and unequal Q. Removing 2001 allows the model to converge, but Q(2,2) goes to 0 eliminating X2 in the process error variance.
 #' The fourth fit allows Q to be unconstrained which allows the model to converge and Q does not go to 0.
@@ -49,9 +49,9 @@ fit1 <- MARSS::MARSS(dat, inits = inits_list, model = mod_list, control = contro
 plot(fit1, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
 
 #changing R or Q to different varcov structures still results in poor (if any convergence) and Q to be degenerate (go to 0).
-# Issue seems to be the added noise from including outlier years is too great for the DLM to model
+# Issue seems to be the added noise from including 2001 is too great for the DLM to model
 
-######---- removing outlier year (2001) ----######
+######---- removing year (2001) ----######
 
 sar_dart<- sar_raw_data %>%
   filter(
@@ -71,7 +71,7 @@ fit2 <- MARSS::MARSS(dat, inits = inits_list, model = mod_list)
 
 plot(fit2, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
 
-######---- removing outlier year (2001), add CUI covariate ----######
+######---- removing year (2001), add CUI covariate ----######
 
 #data for DLM
 m<-2  #add in CUI covariate
@@ -98,7 +98,7 @@ fit3 <- MARSS::MARSS(dat, inits = inits_list, model = mod_list, control = list(a
 plot(fit3, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
 MARSS::MARSSparamCIs(fit3)
 
-######---- removing outlier year (2001), add CUI covariate, and change Q to unconstrained ----######
+######---- removing year (2001), add CUI covariate, and change Q to unconstrained ----######
 
 ## note, attempted setting Q(2,2) to small value first but did not converge, allowing Q to be unconstrained did.
 Q <- "unconstrained" #matrix(c("alpha", 0, 0, "beta"), nrow = m, ncol = m)  side note, if trying to set MARSS to estimate a mix of a scalar and numbers use matrix(list()) not matrix(c())
