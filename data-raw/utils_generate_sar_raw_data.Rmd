@@ -84,6 +84,8 @@ df_icpb<-raw_data %>%
   select(year, value) %>% 
   mutate(index = "ICPB") %>% 
   mutate(year = as.integer(year))
+
+range(df_icpb$value)
 ```
 
 ## Coastal Upwelling Index (CUI)
@@ -117,6 +119,11 @@ df_cui<-df_cui_raw %>%
   select(year, upwelling_index) %>% 
     rename("value" = upwelling_index)  %>%
   mutate(index = "CUI")
+
+
+ggplot(df_cui_raw %>% filter(month ==4) , aes(x= year))+
+  geom_line( aes( y = upwelling_index)) +
+  geom_line(aes(y = upwelling_index_anomaly), color = "red")
 ```
 
 
@@ -199,6 +206,7 @@ To generate CBR sar data, used https://www.cbr.washington.edu/dart/query/pit_sar
   - Set Annual Summary Table Group Type: by Release Site
   - download Pooled by Year SAR csv file link
   - downloaded, saved in `data-raw/SAR` folder, and renamed `LGRLGA_allpassage_wild_spsu_chinook.csv` 
+  - per [issue #4](https://github.com/Columbia-Basin-Research-CBR/SARforecastDLM/issues/4) will limit analysis of DART data to 2002 to most recent outmigration year (2021).
 ```{r load_dart_sar_data}
 #generated new file 1/13/25 with updated years of sar (2000 to 2021) changed values from previous `LGRtoLGA_allpass_W_spsu_ch.csv` file (added 2000-2001; updated 2021 sar values)
 
@@ -206,8 +214,8 @@ To generate CBR sar data, used https://www.cbr.washington.edu/dart/query/pit_sar
 df.cbr.raw<-read_csv(here("data-raw", "LGRLGA_allpassage_wild_spsu_chinook.csv")) %>% 
   drop_na() %>% 
   select(year, meanSAR) %>% #drop CBR notes and NA values
-  mutate(year = as.integer(year)) # %>%
-  # filter( between(year, 2002, 2020)) #Previous version: 2021 does not have ocean4 reported--keep to 2020? Why only including 2002? Removed to include all years of data
+  mutate(year = as.integer(year)) %>%
+  filter( between(year, 2002, 2021)) #including 2021 but will need to note in app that not all ocean-4 adults may have returned. 
 
 # must divide meanSAR /100 to get 0 to 1 and then apply logit/transform since DART sar calculated as adultCount/juvCount*100
 df.cbr<-df.cbr.raw %>% 
@@ -240,6 +248,8 @@ sar_raw_data<-rbind(sar_raw_data, df.cbr)
 ## CJS estimated survival
 - Years: 1994 to 2019 , but update with newer CJS generated data? 2002 - 2021
 - This section uses data generated via cjs-see cjs-model-code-no-covariates.R for code
+- To update this with freshwater covariates (transport,temperature, etc)
+
 ```{r load_cjs_sar_data}
 
 df_cjs_raw<-read_csv(here("data-raw/", "LGR_LGA_surv.csv")) #adding CJS sourced code and adding additional empty year 2020 -see cjs-model-code-no-covariates.R for code

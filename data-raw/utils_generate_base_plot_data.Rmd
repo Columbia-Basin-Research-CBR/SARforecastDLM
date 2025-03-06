@@ -13,7 +13,7 @@ Objective: To generate the base data files for the SARforecastDLM package which 
 # Model Function
 ```{r fct_MARSS_model}
 # Define the function
-run_model_and_forecast <- function(data) {
+run_model_and_forecast <- function(data, Qvarcov) {
   
   train.data<- data %>% 
     filter(!is.na(logit.s))
@@ -46,8 +46,7 @@ run_model_and_forecast <- function(data) {
   ## for process eqn
   B <- diag(m)                        ## 2x2; Identity
   U <- matrix(0, nrow = m, ncol = 1)  ## 2x1; both elements = 0
-  Q <- matrix(list(0), m, m)          ## 2x2; all 0 for now
-  diag(Q) <- c("q.alpha", "q.beta")   ## 2x2; diag = (q1,q2)
+  Q <- Qvarcov                       ## if DART, set to unconstrained, otherwise diagonal and unequal
 
   ## for observation eqn
   Z <- array(NA, c(1, m, TT))  ## NxMxT; empty for now
@@ -67,111 +66,111 @@ run_model_and_forecast <- function(data) {
   # set.seed(1234)
   ## fit univariate DLM
   dlm<- MARSS::MARSS(dat, inits = inits_list, model = mod_list)
+  plot(dlm, silent = TRUE, plot.type = c("fitted.ytT", "xtT"))
   
-  
-  ## forecast
-  ## get list of Kalman filter output
-  kf_out <- MARSSkfss(dlm)
-
-
-  ## forecasts of regr parameters; 2xT matrix - 2 in this case represents slope and intercept (2 regression parameters)
-  eta <- kf_out$xtt1 #one step ahead forecast of regr parameters calc with kalman filter, represented as xtt1 in marss notation
-
-
-  ## variance of regr parameters (slope and intercept); 1x2xT array
-  Phi <- kf_out$Vtt1
-
-  #Since DLM is time-varying only the last values in the training data are used to forecast the next year
-  # Get the last forecasted regression parameters
-  last_eta <- eta[, ncol(eta)]
-
-  # Get the last forecasted variance
-  last_Phi <- Phi[, , ncol(Phi)]
-
-  #get index value for next year and standardize
-  test_value<-test.data$value
-
-
-  #get mean and standard deviation of index used in model
-  mean_index <- mean(index, na.rm = TRUE)
-  sd_index <- sd(index, na.rm = TRUE)
-  test_z_value <- (test_value - mean_index) / sd_index  #standardize using the train dataset mean and standard deviation (unnecessary since each index is standardized before input)
-  print(paste("test_z_value",test_z_value, "and", test_value, "for combination", unique(data$index), unique(data$sar.method)))
-
-
-
-  #forecast logit.s using last predicted regression parameters and z-value for next year
-  forecasted_logit_s <- last_eta[1] + last_eta[2] * test_z_value
-
-
-  # Calculate the forecasted standard error
-  forecasted_se <- sqrt(last_Phi[1, 1] + 2 * last_eta[2] * last_Phi[1, 2] + last_eta[2]^2 * last_Phi[2, 2])
-
-  #forecasted_s <- exp(forecasted_logit_s) / (1 + exp(forecasted_logit_s))*100
-  forecasted_s_plogis <- plogis(forecasted_logit_s)*100
-
-  # Calculate the prediction interval
-  z_value<-qnorm(.975) ## Z-value for 95% confidence interval ~1.96 (change as needed)
-  lower <- forecasted_s_plogis - z_value * forecasted_se
-  upper <- forecasted_s_plogis + z_value * forecasted_se
-
-  #create dataframe for forecast
-  df_nextyear<- data.frame(
-    y = NA,
-    estimate = forecasted_s_plogis,
-    fore_CI_95_lower = lower,
-    fore_CI_95_upper = upper
-  )
-
-  #extract predictions for all years --currently using forecast but should be using predict--doesn't seem to work by calling MARSS::predict()--could try manually extracting and calculating predictions
-  forecast_df<-MARSS::forecast(dlm, h= 1, type = "ytT", interval = "confidence")
-
-  
-    # Check if 'logit.s' and 'value' are empty--use MARSS step-ahead forecast without a index value if it is, if not empty, use test.data index value to forecast nahead
-  if (is.na(test.data$logit.s) && is.na(test.data$value)) {
-    # If both are empty, forecast with h=1 and keep last estimate
-      df_pred_raw<- forecast_df$pred
-    
-     #wrangle for plot
-    df_pred<-df_pred_raw%>%
-    dplyr::mutate(dplyr::across(c(,3:9), ~stats::plogis(.) * 100)) %>%
-    dplyr::select(y, estimate, "fore_CI_95_lower" = `Lo 95`,"fore_CI_95_upper" = `Hi 95`)
-
-  results<-  df_pred %>%
-    dplyr::mutate(year = (min(years):max(years+1)),
-                 index = unique(data$index),
-                 sar.method = unique(data$sar.method),
-                 dataset = "base_forecast",
-                  rear_type = "Natural-origin",
-                  pass_type = "All") %>%
-    dplyr::inner_join(dplyr::select(data, value, year), by = "year") %>% ##join index value
-    dplyr::select(year, value, y, estimate, fore_CI_95_lower, fore_CI_95_upper,sar.method,index, rear_type, pass_type, dataset)
-    
-    return(results)
-  } else {
-  #remove last row (incorrect forecast for next year)
-  df_pred_raw<- forecast_df$pred  %>% head(-1)
-
-
-  #wrangle for plot
-  df_pred<-df_pred_raw%>%
-    dplyr::mutate(dplyr::across(c(,3:9), ~stats::plogis(.) * 100)) %>%
-    dplyr::select(y, estimate, "fore_CI_95_lower" = `Lo 95`,"fore_CI_95_upper" = `Hi 95`)
-
-  results<-  df_pred %>%
-    dplyr::bind_rows(df_nextyear) %>%
-    dplyr::mutate(year = (min(years):max(years+1)),
-                 index = unique(data$index),
-                 sar.method = unique(data$sar.method),
-                 dataset = "base_forecast",
-                  rear_type = "Natural-origin",
-                  pass_type = "All") %>%
-    dplyr::inner_join(dplyr::select(data, value, year), by = "year") %>% ##join index value
-    dplyr::select(year, value, y, estimate, fore_CI_95_lower, fore_CI_95_upper,sar.method,index, rear_type, pass_type, dataset)
-
-
-  return(results)
-  }
+  # ## forecast
+  # ## get list of Kalman filter output
+  # kf_out <- MARSSkfss(dlm)
+  # 
+  # 
+  # ## forecasts of regr parameters; 2xT matrix - 2 in this case represents slope and intercept (2 regression parameters)
+  # eta <- kf_out$xtt1 #one step ahead forecast of regr parameters calc with kalman filter, represented as xtt1 in marss notation
+  # 
+  # 
+  # ## variance of regr parameters (slope and intercept); 1x2xT array
+  # Phi <- kf_out$Vtt1
+  # 
+  # #Since DLM is time-varying only the last values in the training data are used to forecast the next year
+  # # Get the last forecasted regression parameters
+  # last_eta <- eta[, ncol(eta)]
+  # 
+  # # Get the last forecasted variance
+  # last_Phi <- Phi[, , ncol(Phi)]
+  # 
+  # #get index value for next year and standardize
+  # test_value<-test.data$value
+  # 
+  # 
+  # #get mean and standard deviation of index used in model
+  # mean_index <- mean(index, na.rm = TRUE)
+  # sd_index <- sd(index, na.rm = TRUE)
+  # test_z_value <- (test_value - mean_index) / sd_index  #standardize using the train dataset mean and standard deviation (unnecessary since each index is standardized before input)
+  # print(paste("test_z_value",test_z_value, "and", test_value, "for combination", unique(data$index), unique(data$sar.method)))
+  # 
+  # 
+  # 
+  # #forecast logit.s using last predicted regression parameters and z-value for next year
+  # forecasted_logit_s <- last_eta[1] + last_eta[2] * test_z_value
+  # 
+  # 
+  # # Calculate the forecasted standard error
+  # forecasted_se <- sqrt(last_Phi[1, 1] + 2 * last_eta[2] * last_Phi[1, 2] + last_eta[2]^2 * last_Phi[2, 2])
+  # 
+  # #forecasted_s <- exp(forecasted_logit_s) / (1 + exp(forecasted_logit_s))*100
+  # forecasted_s_plogis <- plogis(forecasted_logit_s)*100
+  # 
+  # # Calculate the prediction interval
+  # z_value<-qnorm(.975) ## Z-value for 95% confidence interval ~1.96 (change as needed)
+  # lower <- forecasted_s_plogis - z_value * forecasted_se
+  # upper <- forecasted_s_plogis + z_value * forecasted_se
+  # 
+  # #create dataframe for forecast
+  # df_nextyear<- data.frame(
+  #   y = NA,
+  #   estimate = forecasted_s_plogis,
+  #   fore_CI_95_lower = lower,
+  #   fore_CI_95_upper = upper
+  # )
+  # 
+  # #extract predictions for all years --currently using forecast but should be using predict--doesn't seem to work by calling MARSS::predict()--could try manually extracting and calculating predictions
+  # forecast_df<-MARSS::forecast(dlm, h= 1, type = "ytT", interval = "confidence")
+  # 
+  # 
+  #   # Check if 'logit.s' and 'value' are empty--use MARSS step-ahead forecast without a index value if it is, if not empty, use test.data index value to forecast nahead
+  # if (is.na(test.data$logit.s) && is.na(test.data$value)) {
+  #   # If both are empty, forecast with h=1 and keep last estimate
+  #     df_pred_raw<- forecast_df$pred
+  #   
+  #    #wrangle for plot
+  #   df_pred<-df_pred_raw%>%
+  #   dplyr::mutate(dplyr::across(c(,3:9), ~stats::plogis(.) * 100)) %>%
+  #   dplyr::select(y, estimate, "fore_CI_95_lower" = `Lo 95`,"fore_CI_95_upper" = `Hi 95`)
+  # 
+  # results<-  df_pred %>%
+  #   dplyr::mutate(year = (min(years):max(years+1)),
+  #                index = unique(data$index),
+  #                sar.method = unique(data$sar.method),
+  #                dataset = "base_forecast",
+  #                 rear_type = "Natural-origin",
+  #                 pass_type = "All") %>%
+  #   dplyr::inner_join(dplyr::select(data, value, year), by = "year") %>% ##join index value
+  #   dplyr::select(year, value, y, estimate, fore_CI_95_lower, fore_CI_95_upper,sar.method,index, rear_type, pass_type, dataset)
+  #   
+  #   return(results)
+  # } else {
+  # #remove last row (incorrect forecast for next year)
+  # df_pred_raw<- forecast_df$pred  %>% head(-1)
+  # 
+  # 
+  # #wrangle for plot
+  # df_pred<-df_pred_raw%>%
+  #   dplyr::mutate(dplyr::across(c(,3:9), ~stats::plogis(.) * 100)) %>%
+  #   dplyr::select(y, estimate, "fore_CI_95_lower" = `Lo 95`,"fore_CI_95_upper" = `Hi 95`)
+  # 
+  # results<-  df_pred %>%
+  #   dplyr::bind_rows(df_nextyear) %>%
+  #   dplyr::mutate(year = (min(years):max(years+1)),
+  #                index = unique(data$index),
+  #                sar.method = unique(data$sar.method),
+  #                dataset = "base_forecast",
+  #                 rear_type = "Natural-origin",
+  #                 pass_type = "All") %>%
+  #   dplyr::inner_join(dplyr::select(data, value, year), by = "year") %>% ##join index value
+  #   dplyr::select(year, value, y, estimate, fore_CI_95_lower, fore_CI_95_upper,sar.method,index, rear_type, pass_type, dataset)
+  # 
+  # 
+  # return(results)
+  # }
 }
 ```
 
@@ -191,9 +190,13 @@ for(i in seq_len(nrow(combinations))) {
   # Subset the data for the current combination
   data_subset <- sar_raw_data[sar_raw_data$index == combinations$index[i] & 
                                       sar_raw_data$sar.method == combinations$sar.method[i], ]
-  
+  if(combinations$sar.method[i] == "DART"){
+    Qvarcov_adjusted <- "unconstrained"
+  } else {
+    Qvarcov_adjusted <- "diagonal and unequal"
+  }
   # Run the model and get the forecast
-  forecast <- run_model_and_forecast(data_subset)
+  forecast <- run_model_and_forecast(data_subset, Qvarcov = Qvarcov_adjusted)
   
   # Store the forecast in the list
   forecasts[[i]] <- forecast
