@@ -85,7 +85,13 @@ df_icpb<-raw_data %>%
   mutate(index = "ICPB") %>% 
   mutate(year = as.integer(year))
 
-range(df_icpb$value)
+ggplot(df_icpb, aes(x = year, y = value)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Nearshore Ichthyoplankton",
+       x = "Year",
+       y = "Biomass (mg C m-3)[April]") +
+  theme_minimal()
 ```
 
 ## Coastal Upwelling Index (CUI)
@@ -156,6 +162,15 @@ df_cuti<-dat$data %>%
   select(year, CUTI)  %>% 
   rename(value = "CUTI") %>% 
   mutate(index = "CUTI")
+
+ggplot(df_cuti, aes(x = year, y = value)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "CUTI",
+       x = "Year",
+       y = "index") +
+  theme_minimal()
+
 ```
 
 
@@ -165,6 +180,7 @@ All sar datasets have an additional blank logit.s year for ahead forecast in shi
 
 ## Scheuerell and Williams (2005) 
 - Years: 1964 to 2005
+- Reaches: LGR_LGA (ish)
 - Loaded data via  `SalmonSurvCUI`, `MARSS` package
 
 ```{r load_MARSS_sar_data}
@@ -192,14 +208,16 @@ sar_raw_data <- SalmonSurvCUI %>%
 sar_raw_data<-sar_raw_data %>% 
   select(-c(index, value)) %>% 
   inner_join(df_cuti, by = "year") %>% 
-  bind_rows(sar_raw_data)
+  bind_rows(sar_raw_data) %>% 
+  mutate( reach = "LGR_LGA")
 
 
 ```
 
 ## CBR DART SAR data
+- Reaches: LGR_LGA, BON_BOA
 To generate CBR sar data, used https://www.cbr.washington.edu/dart/query/pit_sar_esu query tool with selections: 
-  - Lower Granite (All) to Lower Granite Adult
+  - Lower Granite (All) to Lower Granite Adult or Bonneville (All) to Bonneville Adult
   - Chinook Snake R Spring/Summer ESU
   - Rear Type : Wild
   - Adult Detections : Exclude 0,1-Year Adult Detections
@@ -207,21 +225,60 @@ To generate CBR sar data, used https://www.cbr.washington.edu/dart/query/pit_sar
   - download Pooled by Year SAR csv file link
   - downloaded, saved in `data-raw/SAR` folder, and renamed `LGRLGA_allpassage_wild_spsu_chinook.csv` 
   - per [issue #4](https://github.com/Columbia-Basin-Research-CBR/SARforecastDLM/issues/4) will limit analysis of DART data to 2002 to most recent outmigration year (2021).
-```{r load_dart_sar_data}
+```{r load_LGRLGA_dart_sar_data}
 #generated new file 1/13/25 with updated years of sar (2000 to 2021) changed values from previous `LGRtoLGA_allpass_W_spsu_ch.csv` file (added 2000-2001; updated 2021 sar values)
 
-# df.cbr.raw<-read_csv(here("data-raw/SAR", "LGRtoLGA_allpass_W_spsu_ch.csv"))
-df.cbr.raw<-read_csv(here("data-raw", "LGRLGA_allpassage_wild_spsu_chinook.csv")) %>% 
+load(here("data", "LGRLGA_allpassage_wild_spsu_chinook.rda"))
+df.cbr.raw<- LGRLGA_allpassage_wild_spsu_chinook %>% 
   drop_na() %>% 
   select(year, meanSAR) %>% #drop CBR notes and NA values
-  mutate(year = as.integer(year)) %>%
-  filter( between(year, 2002, 2021)) #including 2021 but will need to note in app that not all ocean-4 adults may have returned. 
+  mutate(year = as.integer(year))
 
 # must divide meanSAR /100 to get 0 to 1 and then apply logit/transform since DART sar calculated as adultCount/juvCount*100
 df.cbr<-df.cbr.raw %>% 
   mutate(logit.s = qlogis(meanSAR/100)) %>% #
   select(-meanSAR) %>%
-  mutate(sar.method = "DART") %>% 
+  mutate(sar.method = "DART",
+         reach = "LGR_LGA") %>% 
+  add_row(year = max(.$year)+1, logit.s = NA, sar.method = "DART") #add next year with NA
+
+
+#CUI
+df.cbr.cui<-df.cbr %>% inner_join(df_cui, by = "year")
+
+#CUTI
+df.cbr.cuti<-df.cbr %>% inner_join(df_cuti, by = "year")
+
+#ICPB
+df.cbr.icpb<-df.cbr %>% inner_join(df_icpb, by = "year") 
+#NCBI
+df.cbr.ncbi<-df.cbr %>% inner_join(df_ncbi, by = "year") 
+
+
+#join all indices
+df.cbr<-rbind(df.cbr.cui, df.cbr.cuti, df.cbr.icpb, df.cbr.ncbi) 
+
+
+#add to sar_raw_updated with DART sar method with CUI,CUTI, NCBI
+sar_raw_data<-rbind(sar_raw_data, df.cbr)
+```
+
+
+```{r load_BONBOA_dart_sar_data}
+#generated new file 1/13/25 with updated years of sar (2000 to 2021) changed values from previous `LGRtoLGA_allpass_W_spsu_ch.csv` file (added 2000-2001; updated 2021 sar values)
+
+load(here("data", "BONBOA_allpassage_wild_spsu_chinook.rda"))
+df.cbr.raw<-BONBOA_allpassage_wild_spsu_chinook %>% 
+  drop_na() %>% 
+  select(year, meanSAR) %>% #drop CBR notes and NA values
+  mutate(year = as.integer(year))
+
+# must divide meanSAR /100 to get 0 to 1 and then apply logit/transform since DART sar calculated as adultCount/juvCount*100
+df.cbr<-df.cbr.raw %>% 
+  mutate(logit.s = qlogis(meanSAR/100)) %>% #
+  select(-meanSAR) %>%
+  mutate(sar.method = "DART",
+         reach = "BON_BOA") %>% 
   add_row(year = max(.$year)+1, logit.s = NA, sar.method = "DART") #add next year with NA
 
 
@@ -246,19 +303,24 @@ sar_raw_data<-rbind(sar_raw_data, df.cbr)
 ```
 
 ## CJS estimated survival
-- Years: 1994 to 2019 , but update with newer CJS generated data? 2002 - 2021
-- This section uses data generated via cjs-see cjs-model-code-no-covariates.R for code
+- Years: 1994 to 2021
+- Reaches: LGR_LGA, BON_BOA
+- This has been updated with JG generated data-- includes which covariates? Just transport?
 - To update this with freshwater covariates (transport,temperature, etc)
 
-```{r load_cjs_sar_data}
+```{r load_LGRLGA_cjs_sar_data}
 
-df_cjs_raw<-read_csv(here("data-raw/", "LGR_LGA_surv.csv")) #adding CJS sourced code and adding additional empty year 2020 -see cjs-model-code-no-covariates.R for code
+df_cjs_raw<-read_csv(here("data/", "lgr.lga.surv.yr.1994.2021_250309.csv")) 
+df_cjs_raw <- df_cjs_raw[-1]
+
+
+
 
 df.cjs <- df_cjs_raw %>% 
-  select(year, median) %>% 
-  mutate(logit.s = qlogis(median/100)) %>% #requires   mutate(s = plogis(logit.s)*100) %>% #convert back to probability
-  select(-median) %>% 
-  mutate(sar.method = "CJS") %>% 
+  mutate(logit.s = qlogis(LGR_LGA_SAR)) %>% 
+  select(-LGR_LGA_SAR) %>% 
+  mutate(sar.method = "CJS", 
+         reach = "LGR_LGA") %>% 
   add_row(year = max(.$year)+1, logit.s = NA, sar.method = "CJS") #add 2020 with NA
 
 
@@ -267,9 +329,42 @@ df.cjs.cui<- df.cjs %>% inner_join(df_cui, by = "year")
 #CUTI
 df.cjs.cuti<-df.cjs %>% inner_join(df_cuti, by = "year")
 #ICPB
-df.cjs.icpb<-df.cjs %>% inner_join(df_icpb, by = "year") #keep 2020
+df.cjs.icpb<-df.cjs %>% inner_join(df_icpb, by = "year")
 #NCBI
-df.cjs.ncbi<-df.cjs %>% inner_join(df_ncbi, by = "year") #keep 2020
+df.cjs.ncbi<-df.cjs %>% inner_join(df_ncbi, by = "year") 
+
+
+#join all indices
+df.cjs<-rbind(df.cjs.cui, df.cjs.cuti, df.cjs.icpb, df.cjs.ncbi) 
+
+#add to sar_raw_data
+sar_raw_data<-rbind(sar_raw_data, df.cjs)
+```
+
+```{r load_BONBOA_cjs_sar_data}
+
+df_cjs_raw<-read_csv(here("data/", "bon.boa.surv.yr.1994.2021_250309.csv")) 
+df_cjs_raw <- df_cjs_raw[-1]
+
+
+
+
+df.cjs <- df_cjs_raw %>% 
+  mutate(logit.s = qlogis(BON_BOA_SAR)) %>% 
+  select(-BON_BOA_SAR) %>% 
+  mutate(sar.method = "CJS", 
+         reach = "BON_BOA") %>% 
+  add_row(year = max(.$year)+1, logit.s = NA, sar.method = "CJS") #add 2020 with NA
+
+
+#CUI
+df.cjs.cui<- df.cjs %>% inner_join(df_cui, by = "year") 
+#CUTI
+df.cjs.cuti<-df.cjs %>% inner_join(df_cuti, by = "year")
+#ICPB
+df.cjs.icpb<-df.cjs %>% inner_join(df_icpb, by = "year")
+#NCBI
+df.cjs.ncbi<-df.cjs %>% inner_join(df_ncbi, by = "year") 
 
 
 #join all indices
@@ -318,7 +413,7 @@ df_marss<-SalmonSurvCUI %>%
   mutate(sar = plogis(logit.s))
 ggplot() +
   geom_line(data = df_marss, aes(x = year, y = sar*100), color = "red") + #, color = "Scheuerell and Williams (2005)")) +
-  geom_line(data = df_cjs_raw, aes(x = year, y = median), color = "blue") + #, color = "CJS")) +
+  geom_line(data = df_cjs_raw, aes(x = year, y = LGR_LGA_SAR), color = "blue") + #, color = "CJS")) +
   geom_line(data = df.cbr.raw, aes(x = year, y = meanSAR), color = "green") + #, color = "DART")) +
     labs(title = "Observed SAR by method",
        x = "Year",
