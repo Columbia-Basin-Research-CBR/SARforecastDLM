@@ -9,7 +9,14 @@ Objective: To generate the base data files for the SARforecastDLM package which 
 
 - `base_plot_data.rda`: includes forecast results with all years for each sar.method and index -- used in mod_mainpage.R
 
-
+# Load Libraries
+```{r load_libraries}
+library(tidyverse)
+library(janitor)
+library(MARSS)
+library(broom)
+library(here)
+```
 # Model Function
 ```{r fct_MARSS_model}
 # Define the function
@@ -34,19 +41,22 @@ run_model_and_forecast <- function(data, inputQ, inputB, inputR, inputU) {
 
   ## ## ## z-score the upwelling index
   index_z <- matrix((index - mean(index)) / sqrt(var(index)), nrow = 1)
+  
+  ## z-score normalize the test data using the training data's mean and variance
+  index_z_test <- (test.data$value - mean(index)) / sqrt(var(index))
 
 
   ## number of regr params (slope + intercept) = 2
   m <- dim(index_z)[1] + 1
 
-
   ### build DLM
-
- ## Handle inputs dynamically
+  
   B <- if (is.character(inputB) && inputB == "diag") diag(m) else inputB
-  U <- if (is.character(inputU) && inputU == "zero") matrix(0, nrow = m, ncol = 1) else inputU
+  U <- if (is.character(inputU) && inputU == "0") matrix(0, nrow = m, ncol = 1) else if (inputU == "u") matrix("u", nrow = m, ncol = 1) else inputU
   Q <- if (is.character(inputQ) && inputQ == "diagonal and unequal") "diagonal and unequal" else inputQ
-  R <- if (is.character(inputR) && inputR == "r") matrix("r") else inputR
+  R <- if (is.character(inputR) && inputR == "r") matrix("r") else matrix(as.numeric(inputR))
+  
+  print(paste("B:", B, "U:", U, "Q:", Q, "R:", R))
                 
   Z <- array(NA, c(1, m, TT))  
   Z[1,1,] <- rep(1, TT)        
@@ -61,62 +71,177 @@ run_model_and_forecast <- function(data, inputQ, inputB, inputR, inputU) {
 
 
   ### fit DLM
+  print(paste("Running model for:", unique(data$index), unique(data$sar.method), unique(data$reach)))
   dlm<- MARSS::MARSS(dat, inits = inits_list, model = mod_list)
-  autoplot(dlm, silent = TRUE, plot.type = c("fitted.ytT","fitted.ytt1", "xtT", "xtt1"))
+    convergence_status <- ifelse(dlm$convergence == 0, "Success", "Warning")
+  # autoplot(dlm, silent = TRUE, plot.type = c("fitted.ytT","fitted.ytt1", "xtT", "xtt1"))
+
   
   ## forecast
-  forecast_ytt1<-MARSS::forecast(dlm, h= 1, newdata = list(z = test.data[nrow(test.data),4], y = train.data[nrow(train.data),2]), type = "ytt1", interval = "confidence", fun.kf = "MARSSkfss") 
-  # print(paste("New data: covariate data ", forecast_df$newdata$z, "with last survival", forecast_df$newdata$y))
+  forecast_ytt1<-MARSS::forecast(dlm, h= 1, newdata = list(z = index_z_test, y = train.data[nrow(train.data),2]), type = "ytt1", interval = "confidence", fun.kf = "MARSSkfss") 
+
+  
+    # Determine the year vector based on the condition
+  if (unique(data$sar.method) == "DART" && unique(data$reach) == "BON_BOA") {
+    year_vector <- c(2000:2004, 2006:2023)
+  } else {
+    year_vector <- min(years):(max(years) + 1)
+  }
   
 
   forecast_df <- forecast_ytt1$pred %>% 
                     mutate(across(c(3:4, 6:9),~plogis(.x)*100)) %>% 
                     janitor::clean_names() %>% 
-                    mutate(year = (min(years):max(years+1)),
+                    mutate(year = year_vector,
                           index = unique(data$index),
                           sar.method = unique(data$sar.method),
                           dataset = "base_forecast",
                           rear_type = "Natural-origin",
-                          pass_type = "All") %>% 
+                          pass_type = "All", 
+                          convergence = convergence_status) %>% 
                     inner_join(select(data, value, year), by = "year") %>% ##join index value
-                    select(year, value, y, estimate, lo_95, hi_95,sar.method,index, rear_type, pass_type, dataset)
+                    select(year, value, y, estimate, lo_95, hi_95,sar.method,index, rear_type, pass_type, dataset, convergence)
   
   return(forecast_df)
 }
+```
 
 
+```{r fct_MARSS_model_example}
+params<-paramlist %>% filter(sar.method == "CJS", index == "CUTI", reach == "LGR_LGA") 
+
+# #example
 mod<-run_model_and_forecast(
-  data = sar_raw_data %>% filter(sar.method == "Scheuerell and Williams (2005)", index == "CUI"), 
-  inputQ = "diagonal and unequal",   # Passed as a character
-  inputB = "diag",  # Will be converted to diag(m) inside function
-  inputR = "r",  # Will be converted to matrix("r")
-  inputU = "zero"  # Will be converted to matrix(0, nrow = m, ncol = 1)
+  data = sar_raw_data %>% filter(sar.method == "CJS", index == "CUTI", reach == "LGR_LGA"),
+  inputQ = params$Qinput,   
+  inputB = params$Binput, 
+  inputR = params$Rinput,
+  inputU = params$Uinput  
 )
 
+paramlist <-paramlist %>% 
+   mutate(
+    Uinput = ifelse(index == "CUTI" & sar.method == "CJS" & reach == "LGR_LGA", "u", Uinput)
+    # Rinput = ifelse(index == "CUI" & sar.method == "DART" & reach == "BON_BOA", "0.1", Rinput)
+  )
 
-x <- print(mod$dlm, what = "ytt1", silent = TRUE)
-x
-library(broom)
-tidy(mod$dlm)
-# can get values via: 
-head(stats::tsSmooth(mod$dlm, type="ytt1")) #“xtT”, “xtt”, “xtt1”, “ytT”, “ytt”, “ytt1” or,
+paramlist<-DLM_parameter_list_param
+usethis::use_data(paramlist, overwrite = TRUE)
 
-head(fitted(mod$dlm, type="ytT")) #get fitted values using all data
-head(fitted(mod$dlm, type="ytt1")) #get fitted values using data up to time t-1
 
-df<-mod$forecast_df$pred %>% 
-  mutate(across(c(3:4, 6:9),~plogis(.x)*100)) %>% 
-  janitor::clean_names() %>% 
- mutate(year = (min(years):max(years+1)),
-        index = unique(data$index),
-        sar.method = unique(data$sar.method),
-        dataset = "base_forecast",
-        rear_type = "Natural-origin",
-        pass_type = "All") %>% 
-  inner_join(select(data, value, year), by = "year") %>% ##join index value
-  select(year, value, y, estimate, lo_95, hi_95,sar.method,index, rear_type, pass_type, dataset)
-                
 ```
+
+
+# Run Function 
+```{r run_model_and_forecast_loop_lookup}
+load(here::here("data", "sar_raw_data.rda"))
+load(here::here("data", "paramlist.rda"))
+
+
+# Get the unique combinations of index and sar.method
+combinations <- unique(sar_raw_data[, c("index", "sar.method", "reach")]) %>% drop_na()
+
+forecasts <- list()
+
+for(i in seq_len(nrow(combinations))) {
+  # Subset the data for the current combination
+  data_subset <- sar_raw_data %>%
+    filter(
+        index == !!combinations$index[i],
+        sar.method == !!combinations$sar.method[i],
+        reach == !!combinations$reach[i]
+           )
+  
+  # Get the parameter values for the current combination
+  params <- paramlist %>%
+    filter(
+        index == !!combinations$index[i],
+        sar.method == !!combinations$sar.method[i],
+        reach == !!combinations$reach[i]
+           ) %>% 
+  mutate(across(everything(), as.character))
+
+  
+  # Run the model and get the forecast
+  forecast <- run_model_and_forecast(
+    data = data_subset, 
+    inputQ = params$Qinput, 
+    inputB = params$Binput, 
+    inputR = params$Rinput, 
+    inputU = params$Uinput
+  )
+  
+  # Create the name for the sublist
+  combination_name <- paste(combinations$sar.method[i], combinations$index[i], combinations$reach[i], sep = "_")
+  
+  # Store the forecast in the list with the created name
+  forecasts[[combination_name]] <- forecast
+}
+
+
+```
+
+
+```{r run_model_and_forecast_loop_using_ifelse}
+load(here::here("data", "sar_raw_data.rda"))
+     
+# Get the unique combinations of index and sar.method
+combinations <- unique(sar_raw_data[, c("index", "sar.method", "reach")]) %>% drop_na()
+
+# Define the parameter options
+B_options <- c("diag", "diagonal and unequal", "diagonal and equal")
+U_options <- c("u", "0")
+Q_options <- c("unconstrained", "diagonal and unequal", "equalvarcov")
+R_options <- c("0.05", "0.1", "r")
+
+
+# Initialize an empty list to store the forecasts
+forecasts <- list()
+
+# Loop over each combination
+for(i in seq_len(nrow(combinations))) {
+  # Subset the data for the current combination
+  data_subset <- sar_raw_data %>%
+    filter(
+        index == combinations$index[i],
+        sar.method == combinations$sar.method[i],
+        reach == combinations$reach[i]
+           )
+  
+    B_input <- ifelse(combinations$sar.method[i] == "CJS" | combination$index[i] != "NCBI", "diagonal and equal", "diag")
+    U_input <- "0"#ifelse(combinations$sar.method[i] %in% c("DART", "SW"), "u", "0")
+    Q_input <- ifelse(combinations$sar.method[i] == "Scheuerell and Williams (2005)", "diagonal and unequal", "unconstrained")
+    R_input <- ifelse(combinations$sar.method[i] == "Scheuerell and Williams (2005)", "r", "0.07")
+  
+  # Run the model and get the forecast
+  forecast <- run_model_and_forecast(
+    data = data_subset, 
+    inputQ = Q_input, 
+    inputB = B_input, 
+    inputR = R_input, 
+    inputU = U_input
+  )
+  
+  # Store the forecast in the list
+  forecasts[[i]] <- forecast
+}
+
+# Combine all forecasts into one data frame
+all_forecasts <- do.call(rbind, forecasts)
+
+
+# check
+all_forecasts %>% 
+  group_by(sar.method, index) %>% 
+  summarise(n_distinct(year))
+
+base_plot_data<-all_forecasts
+# 
+# #save updated sar_raw_data
+# usethis::use_data(base_plot_data, overwrite = TRUE)
+
+```
+
 
 
 ```{r fct_MARSS_model_manual forecast, eval = FALSE}
@@ -223,67 +348,6 @@ results<-  df_pred %>%
 
 return(results)
 }
-```
-
-# Run Function 
-```{r run_model_and_forecast_loop}
-load(here::here("data", "sar_raw_data.rda"))
-     
-# Get the unique combinations of index and sar.method
-combinations <- unique(sar_raw_data[, c("index", "sar.method", "reach")]) %>% drop_na()
-
-# Define the parameter options
-B_options <- c("diag", "diagonal and unequal", "diagonal and equal")
-U_options <- c("u", "0")
-Q_options <- c("unconstrained", "diagonal and unequal", "equalvarcov")
-R_options <- c("0.05", "0.1", "r")
-
-
-# Initialize an empty list to store the forecasts
-forecasts <- list()
-
-# Loop over each combination
-for(i in seq_len(nrow(combinations))) {
-  # Subset the data for the current combination
-  data_subset <- sar_raw_data %>%
-    filter(
-        index == combinations$index[i],
-        sar.method == combinations$sar.method[i],
-        reach == combinations$reach[i]
-           )
-  
-    B_input <- ifelse(combinations$sar.method[i] == "CJS" | combination$index[i] != "NCBI", "diagonal and equal", "diag")
-    U_input <- "0"#ifelse(combinations$sar.method[i] %in% c("DART", "SW"), "u", "0")
-    Q_input <- ifelse(combinations$sar.method[i] == "Scheuerell and Williams (2005)", "diagonal and unequal", "unconstrained")
-    R_input <- ifelse(combinations$sar.method[i] == "Scheuerell and Williams (2005)", "r", "0.07")
-  
-  # Run the model and get the forecast
-  forecast <- run_model_and_forecast(
-    data = data_subset, 
-    inputQ = Q_input, 
-    inputB = B_input, 
-    inputR = R_input, 
-    inputU = U_input
-  )
-  
-  # Store the forecast in the list
-  forecasts[[i]] <- forecast
-}
-
-# Combine all forecasts into one data frame
-all_forecasts <- do.call(rbind, forecasts)
-
-
-# check
-all_forecasts %>% 
-  group_by(sar.method, index) %>% 
-  summarise(n_distinct(year))
-
-base_plot_data<-all_forecasts
-# 
-# #save updated sar_raw_data
-# usethis::use_data(base_plot_data, overwrite = TRUE)
-
 ```
 
 # view output

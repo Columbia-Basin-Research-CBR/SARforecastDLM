@@ -7,11 +7,14 @@
 app_server <- function(input, output, session) {
   # Your application server logic
 
+  load(system.file("data/forecast_output.rda", package = "SARforecastDLM"))
+  get("forecast_output")
+
   ## About page
   mod_about_page_server("about_page_1")
 
   #main page
-  dataselect_reactives<- mod_mainpage_submodule_dataselection_server("submodule_dataselection_1")
+  dataselect_reactives<- mod_mainpage_submodule_dataselection_server("submodule_dataselection_1", forecast_output = forecast_output)
 
   observe({
     filtered_data <- dataselect_reactives$filtered_data

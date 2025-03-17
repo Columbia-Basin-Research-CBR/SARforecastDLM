@@ -78,11 +78,11 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
       plotly::add_lines(
         data = data_list[[i]],
         x = ~year,
-        y = ~fore_CI_95_upper,
+        y = ~hi_95,
         name = "Upper 95% CI",
         legendgroup = paste("forecasted", i),
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR upper 95% CI:", custom_round(fore_CI_95_upper)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR upper 95% CI:", custom_round(hi_95)),
         line = list(
           dash = "dash",
           color = color
@@ -92,11 +92,11 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
       plotly::add_lines(
         data = data_list[[i]],
         x = ~year,
-        y = ~fore_CI_95_lower,
+        y = ~lo_95,
         name = "Lower 95% CI",
         legendgroup = paste("forecasted", i),
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR lower 95% CI:", custom_round(fore_CI_95_lower)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR lower 95% CI:", custom_round(lo_95)),
         line = list(
           dash = "dash",
           color = color
@@ -114,8 +114,8 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
           x = ~year,
           y = ~estimate,
           # error_y = list(
-          #   arrayminus = ~estimate - fore_CI_95_lower,
-          #   array = ~fore_CI_95_upper - estimate,
+          #   arrayminus = ~estimate - lo_95,
+          #   array = ~hi_95 - estimate,
           #   width = 1,
           #   thickness = 1.5,
           #   color = color
@@ -188,11 +188,11 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
       plotly::add_lines(
         data = data_list[["base_forecast"]],
         x = ~year,
-        y = ~fore_CI_95_upper,
+        y = ~hi_95,
         name = "Upper 95% CI",
         legendrank = 2,
         legendgroup = "base_forecast",
-        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR upper 95% CI:", custom_round(fore_CI_95_upper)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR upper 95% CI:", custom_round(hi_95)),
         line = list(
           dash = "dash",
           color = color
@@ -202,11 +202,11 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
       plotly::add_lines(
         data = data_list[["base_forecast"]],
         x = ~year,
-        y = ~fore_CI_95_lower,
+        y = ~lo_95,
         name = "Lower 95% CI",
         legendrank = 2,
         legendgroup = "base_forecast",
-        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR lower 95% CI:", custom_round(fore_CI_95_lower)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR lower 95% CI:", custom_round(lo_95)),
         line = list(
           dash = "dash",
           color = color
@@ -224,8 +224,8 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
           x = ~year,
           y = ~estimate,
           # error_y = list(
-          #   arrayminus = ~estimate - fore_CI_95_lower,
-          #   array = ~fore_CI_95_upper - estimate,
+          #   arrayminus = ~estimate - lo_95,
+          #   array = ~hi_95 - estimate,
           #   width = 1,
           #   thickness = 1.5,
           #   color = color

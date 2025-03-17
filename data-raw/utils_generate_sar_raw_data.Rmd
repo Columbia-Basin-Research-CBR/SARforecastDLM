@@ -240,7 +240,7 @@ df.cbr<-df.cbr.raw %>%
   select(-meanSAR) %>%
   mutate(sar.method = "DART",
          reach = "LGR_LGA") %>% 
-  add_row(year = max(.$year)+1, logit.s = NA, sar.method = "DART") #add next year with NA
+  add_row(year = max(.$year)+1, logit.s = NA, sar.method = "DART", reach = "LGR_LGA") #add next year with NA
 
 
 #CUI
@@ -260,7 +260,7 @@ df.cbr<-rbind(df.cbr.cui, df.cbr.cuti, df.cbr.icpb, df.cbr.ncbi)
 
 
 #add to sar_raw_updated with DART sar method with CUI,CUTI, NCBI
-sar_raw_data<-rbind(sar_raw_data, df.cbr)
+sar_raw_data<-rbind(sar_raw_data, df.cbr) 
 ```
 
 
@@ -279,7 +279,7 @@ df.cbr<-df.cbr.raw %>%
   select(-meanSAR) %>%
   mutate(sar.method = "DART",
          reach = "BON_BOA") %>% 
-  add_row(year = max(.$year)+1, logit.s = NA, sar.method = "DART") #add next year with NA
+  add_row(year = max(.$year)+1, logit.s = NA, sar.method = "DART", reach = "BON_BOA") #add next year with NA
 
 
 #CUI
@@ -321,7 +321,7 @@ df.cjs <- df_cjs_raw %>%
   select(-LGR_LGA_SAR) %>% 
   mutate(sar.method = "CJS", 
          reach = "LGR_LGA") %>% 
-  add_row(year = max(.$year)+1, logit.s = NA, sar.method = "CJS") #add 2020 with NA
+  add_row(year = max(.$year)+1, logit.s = NA, sar.method = "CJS", reach = "LGR_LGA") #add 2020 with NA
 
 
 #CUI
@@ -354,7 +354,7 @@ df.cjs <- df_cjs_raw %>%
   select(-BON_BOA_SAR) %>% 
   mutate(sar.method = "CJS", 
          reach = "BON_BOA") %>% 
-  add_row(year = max(.$year)+1, logit.s = NA, sar.method = "CJS") #add 2020 with NA
+  add_row(year = max(.$year)+1, logit.s = NA, sar.method = "CJS", reach = "BON_BOA") #add 2020 with NA
 
 
 #CUI

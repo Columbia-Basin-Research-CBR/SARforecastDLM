@@ -184,16 +184,17 @@ mod_mainpage_server <- function(id, data){
     common_vars <- reactive({
       selected_index <- data()$index[1]  # Get selected index
       selected_sar <- data()$sar.method[1]  # Get selected method
+      selected_reach <- data()$reach[1]  # Get selected reach
 
       # Filter data based on selected index and method
-      filtered_data <- data()[data()$index == selected_index & data()$sar.method == selected_sar, ]
+      filtered_data <- data()[data()$index == selected_index & data()$sar.method == selected_sar & data()$reach == selected_reach, ]
 
       # Calculate min and max year
       min_year <- min(filtered_data$year, na.rm = TRUE)
       max_year <- max(filtered_data$year, na.rm = TRUE)- 1
 
       # Return a list of the extracted variables
-      list(selected_index = selected_index, selected_sar = selected_sar, min_year = min_year, max_year = max_year)
+      list(selected_index = selected_index, selected_sar = selected_sar, selected_reach = selected_reach, min_year = min_year, max_year = max_year)
     })
 
     # Reactive function for min_year
@@ -226,7 +227,7 @@ mod_mainpage_server <- function(id, data){
       title <- switch(vars$selected_index,
                       "CUI" = paste("Coastal Upwelling Index:", vars$min_year, "to", vars$max_year),
                       "CUTI" = paste("Coastal Upwelling Transport Index:", vars$min_year, "to", vars$max_year),
-                      # "ICPB" = paste("Index of Coastal Prey Biomass:", vars$min_year, "to", vars$max_year),
+                      "ICPB" = paste("Index of Coastal Prey Biomass:", vars$min_year, "to", vars$max_year),
                       "NCBI" = paste("Northern Copepod Biomass Index:", vars$min_year, "to", vars$max_year),
                       "Pick an index")
 
@@ -260,21 +261,22 @@ mod_mainpage_server <- function(id, data){
       selected_years <- input$years_select
       selected_index <- data()$index[1]
       selected_sar   <- data()$sar.method[1]
+      selected_reach <- data()$reach[1]
 
       # Select the data based on the selected index--used to prevent data_base to update without hitting run model first (remove if want to compare CUI and CUTI results)
       if (selected_index == "CUI") {
         data_base(data())
       } else if (selected_index == "CUTI") {
         data_base(data())
-        # } else if (selected_index == "ICPB") {
-        #   data_base(data())
+      } else if (selected_index == "ICPB") {
+        data_base(data())
       } else if (selected_index == "NCBI") {
         data_base(data())
       }
 
 
       # # Run the model
-      df_forecast<-fct_forecast_model(data = sar_raw_data, years_selected = selected_years, index_selected = selected_index, sar_method_selected = selected_sar)
+      df_forecast<-fct_forecast_model(data = sar_raw_data,paramlist = paramlist, years_selected = selected_years, index_selected = selected_index, sar_method_selected = selected_sar, reach_selected = selected_reach)
 
       # Return df_forecast and selected_years
       list(df_forecast = df_forecast,
@@ -290,6 +292,7 @@ mod_mainpage_server <- function(id, data){
           dplyr::filter(
             index == data()$index[1],
             sar.method == data()$sar.method[1],
+            reach == data()$reach[1],
             dataset == "base_forecast"
           )
         # base plot
