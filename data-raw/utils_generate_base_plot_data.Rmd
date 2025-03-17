@@ -88,6 +88,10 @@ run_model_and_forecast <- function(data, inputQ, inputB, inputR, inputU) {
     year_vector <- min(years):(max(years) + 1)
   }
   
+  # map_sar_names<- c("Scheuerell and Williams (2005)" = "sw", "DART" = "dart", "CJS" = "cjs")
+  # map_index_names<- c("CUI" = "cui", "CUTI" = "cuti", "ICPB" = "icpb", "NCBI" = "ncbi")
+  # map_reach_names<- c("LGR_LGA" = "lgrlga", "BON_BOA" = "bonboa")
+  
 
   forecast_df <- forecast_ytt1$pred %>% 
                     mutate(across(c(3:4, 6:9),~plogis(.x)*100)) %>% 
@@ -95,12 +99,13 @@ run_model_and_forecast <- function(data, inputQ, inputB, inputR, inputU) {
                     mutate(year = year_vector,
                           index = unique(data$index),
                           sar.method = unique(data$sar.method),
+                          reach = unique(data$reach),
                           dataset = "base_forecast",
                           rear_type = "Natural-origin",
                           pass_type = "All", 
                           convergence = convergence_status) %>% 
                     inner_join(select(data, value, year), by = "year") %>% ##join index value
-                    select(year, value, y, estimate, lo_95, hi_95,sar.method,index, rear_type, pass_type, dataset, convergence)
+                    select(year, value, y, estimate, lo_95, hi_95,sar.method,index, reach, rear_type, pass_type, dataset, convergence)
   
   return(forecast_df)
 }
@@ -141,7 +146,7 @@ load(here::here("data", "paramlist.rda"))
 # Get the unique combinations of index and sar.method
 combinations <- unique(sar_raw_data[, c("index", "sar.method", "reach")]) %>% drop_na()
 
-forecasts <- list()
+forecast_output <- list()
 
 for(i in seq_len(nrow(combinations))) {
   # Subset the data for the current combination
@@ -171,78 +176,20 @@ for(i in seq_len(nrow(combinations))) {
     inputU = params$Uinput
   )
   
+  map_sar_names<- c("Scheuerell and Williams (2005)" = "sw", "DART" = "dart", "CJS" = "cjs")
+  map_index_names<- c("CUI" = "cui", "CUTI" = "cuti", "ICPB" = "icpb", "NCBI" = "ncbi")
+  map_reach_names<- c("LGR_LGA" = "lgrlga", "BON_BOA" = "bonboa")
+  
   # Create the name for the sublist
-  combination_name <- paste(combinations$sar.method[i], combinations$index[i], combinations$reach[i], sep = "_")
+  combination_name <- paste(map_sar_names[combinations$sar.method[i]], map_index_names[combinations$index[i]], map_reach_names[combinations$reach[i]], sep = "_")
   
   # Store the forecast in the list with the created name
-  forecasts[[combination_name]] <- forecast
+  forecast_output[[combination_name]] <- forecast
 }
 
+usethis::use_data(forecast_output, overwrite = TRUE)
 
 ```
-
-
-```{r run_model_and_forecast_loop_using_ifelse}
-load(here::here("data", "sar_raw_data.rda"))
-     
-# Get the unique combinations of index and sar.method
-combinations <- unique(sar_raw_data[, c("index", "sar.method", "reach")]) %>% drop_na()
-
-# Define the parameter options
-B_options <- c("diag", "diagonal and unequal", "diagonal and equal")
-U_options <- c("u", "0")
-Q_options <- c("unconstrained", "diagonal and unequal", "equalvarcov")
-R_options <- c("0.05", "0.1", "r")
-
-
-# Initialize an empty list to store the forecasts
-forecasts <- list()
-
-# Loop over each combination
-for(i in seq_len(nrow(combinations))) {
-  # Subset the data for the current combination
-  data_subset <- sar_raw_data %>%
-    filter(
-        index == combinations$index[i],
-        sar.method == combinations$sar.method[i],
-        reach == combinations$reach[i]
-           )
-  
-    B_input <- ifelse(combinations$sar.method[i] == "CJS" | combination$index[i] != "NCBI", "diagonal and equal", "diag")
-    U_input <- "0"#ifelse(combinations$sar.method[i] %in% c("DART", "SW"), "u", "0")
-    Q_input <- ifelse(combinations$sar.method[i] == "Scheuerell and Williams (2005)", "diagonal and unequal", "unconstrained")
-    R_input <- ifelse(combinations$sar.method[i] == "Scheuerell and Williams (2005)", "r", "0.07")
-  
-  # Run the model and get the forecast
-  forecast <- run_model_and_forecast(
-    data = data_subset, 
-    inputQ = Q_input, 
-    inputB = B_input, 
-    inputR = R_input, 
-    inputU = U_input
-  )
-  
-  # Store the forecast in the list
-  forecasts[[i]] <- forecast
-}
-
-# Combine all forecasts into one data frame
-all_forecasts <- do.call(rbind, forecasts)
-
-
-# check
-all_forecasts %>% 
-  group_by(sar.method, index) %>% 
-  summarise(n_distinct(year))
-
-base_plot_data<-all_forecasts
-# 
-# #save updated sar_raw_data
-# usethis::use_data(base_plot_data, overwrite = TRUE)
-
-```
-
-
 
 ```{r fct_MARSS_model_manual forecast, eval = FALSE}
 ## forecast
