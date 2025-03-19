@@ -40,6 +40,21 @@ app_ui <- function(request) {
             shinydashboard::menuItem("About", tabName = "about", icon = icon("house")),
             shinydashboard::menuItem("Forecast Survival", tabName = "figs", icon = icon("chart-line"), selected = TRUE),
             shinydashboard::menuItem("Supplementary Information", tabName = "bkg", icon = icon("book"))
+          ),
+          br(),
+          br(),
+          shinyWidgets::dropdownButton(
+            label = "Table of Acronyms",
+            inline = TRUE,
+            circle = FALSE,
+            status = "default",
+            icon = icon("table"),
+            width = "500px",
+            # tooltip = tooltipOptions(title = "Click to see inputs !"),
+            div(
+              style = "max-height: 500px; overflow-y: auto; margin: 10px; color: black;",
+            shiny::includeHTML(system.file("app/www/mod_main_tbl_acronyms.html", package = "SARforecastDLM"))
+            )
           )
         ),
 

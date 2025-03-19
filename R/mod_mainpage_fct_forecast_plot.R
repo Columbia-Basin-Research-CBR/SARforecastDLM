@@ -16,7 +16,7 @@ fct_forecast_plot <- function(data) {
 
   reach_value <- if(!is.null(data) && "reach" %in% names(data) && nrow(data) > 0 ) {
     if(unique(data$sar.method)[1] != "Scheuerell and Williams (2005)") {
-      unique(data$reach)[1]  # Get first unique value
+      paste(",",unique(data$reach)[1])  # Get first unique value
     } else { NULL }
   }
 
@@ -96,6 +96,7 @@ fct_forecast_plot <- function(data) {
       data = last_year_data,
       x = ~year,
       y = ~estimate,
+      type = "scatter",
       # error_y = list(
       #   arrayminus = ~estimate - lo_95,
       #   array = ~hi_95 - estimate,
@@ -121,7 +122,7 @@ fct_forecast_plot <- function(data) {
   p_plotly <- p_plotly %>%
     plotly::layout(
       xaxis = list(title = "Year of ocean entry"),
-      yaxis = list(title = paste("Smolt-to-adult survival,", reach_value,"\n(%)")),
+      yaxis = list(title = paste0("Smolt-to-adult survival", reach_value ,"\n(%)")),
       hovermode = "closest",
       margin = list(b = 80)
     )

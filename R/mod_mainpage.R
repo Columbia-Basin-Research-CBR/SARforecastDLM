@@ -121,8 +121,6 @@ mod_mainpage_server <- function(id, data){
     model_run_text <- reactiveVal("")
     model_reset_clicked <- reactiveVal(FALSE)
     input_changed_after_run <- reactiveVal(FALSE)
-
-    #
     convergence_status <- reactiveVal("Not run yet")
 
 
@@ -222,6 +220,9 @@ mod_mainpage_server <- function(id, data){
 
     # Reactive text output for slider once used
     output$selected_range <- renderUI({
+      req(data())
+      req(input$years_select)
+
       if (!model_run_once() || model_reset_clicked()) {
 
         index_val<-data()$index[1]
@@ -239,12 +240,26 @@ mod_mainpage_server <- function(id, data){
 
     # Reactive function to extract common variables for dynamic titles and slider
     common_vars <- reactive({
+      req(data())
+      req(nrow(data()>0))
+      req(data()$index[1])
+      req(data()$sar.method[1])
+      req(data()$reach[1])
+
       selected_index <- data()$index[1]  # Get selected index
       selected_sar <- data()$sar.method[1]  # Get selected method
       selected_reach <- data()$reach[1]  # Get selected reach
 
+      # Validate selected values
+      req(selected_index)
+      req(selected_sar)
+      req(selected_reach)
+
       # Filter data based on selected index and method
       filtered_data <- data()[data()$index == selected_index & data()$sar.method == selected_sar & data()$reach == selected_reach, ]
+
+      req(filtered_data)
+      req(nrow(filtered_data) > 0)
 
       # Calculate min and max year
       min_year <- min(filtered_data$year, na.rm = TRUE)
@@ -279,7 +294,7 @@ mod_mainpage_server <- function(id, data){
     output$data_caption <- renderUI({
       vars <- common_vars()
       if(vars$selected_sar == "Scheuerell and Williams (2005)"){
-        HTML("Scheuerell and Williams (2005) SAR method is estimated based on the uppermost dam on the Snake River, adjusting as dams were built upstream from 1964 to 2005.")
+        HTML("Scheuerell and Williams (2005) SAR is based on the uppermost dam on the Snake River (Snake River Upper-Upper), adjusting as dams were built upstream from 1964 to 2005.")
       } else {
        NULL
       }
@@ -303,6 +318,7 @@ mod_mainpage_server <- function(id, data){
     # Reactive slider
     output$year_slider <- renderUI({
       vars <- common_vars()  # Get the common variables
+    req(vars$selected_sar)
 
       sliderInput(inputId = ns("years_select"),
                   label = "Select year range:",
@@ -349,7 +365,7 @@ mod_mainpage_server <- function(id, data){
       selected_index <- data()$index[1]
       selected_sar   <- data()$sar.method[1]
       selected_reach <- data()$reach[1]
-
+      print(selected_reach)
       # Select the data based on the selected index--used to prevent data_base to update without hitting run model first (remove if want to compare CUI and CUTI results)
       if (selected_index == "CUI") {
         data_base(data())
@@ -374,6 +390,8 @@ mod_mainpage_server <- function(id, data){
 
     #plot forecast
     output$plot_forecast_1 <- plotly::renderPlotly({
+      req(data())
+
       # Check if model_run_clicked and model_run_once is FALSE (i.e., model has not been clicked or been run once)
       if (!model_run_clicked() || !model_run_once() || model_reset_clicked()) {
         # If model_run_clicked and model_run_once is FALSE, plot the base forecast and allow user to adjust plot based on inputs(index & sar.method)
@@ -384,6 +402,7 @@ mod_mainpage_server <- function(id, data){
             reach == data()$reach[1],
             dataset == "base_forecast"
           )
+        print(data()$reach[1])
         # base plot
         fct_forecast_plot(data = filtered_data)
         #Check if model_run is not NULL (i.e., model has been run)
@@ -396,6 +415,7 @@ mod_mainpage_server <- function(id, data){
 
     #index plot
     output$plot_index <- plotly::renderPlotly({
+      req(data())
       fct_index_plot(data = data())
     })
   })

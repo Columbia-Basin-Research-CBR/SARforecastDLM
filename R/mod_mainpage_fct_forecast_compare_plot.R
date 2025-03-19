@@ -19,6 +19,13 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
 
   data_list <- split(data, data$dataset)
 
+  reach_value <- if(!is.null(data_base) && "reach" %in% names(data_base) && nrow(data_base) > 0 ) {
+    if(unique(data_base$sar.method)[1] != "Scheuerell and Williams (2005)") {
+      paste(",",unique(data_base$reach)[1])  # Get first unique value
+    } else { NULL }
+  }
+
+
   # Define colors for base vs forecast selected
   colors <- c("base_forecast" = grDevices::rgb(2/255, 76/255, 99/255, 0.25), "select_forecast" = "#b47747") #setting alpha = .5 for color "#024c63"-RGB=(2, 76, 99), convert to scale 0-1 by /255 to set alpha to .25.
 
@@ -113,6 +120,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
           data = last_year_data,
           x = ~year,
           y = ~estimate,
+          type = "scatter",
           # error_y = list(
           #   arrayminus = ~estimate - lo_95,
           #   array = ~hi_95 - estimate,
@@ -138,7 +146,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
   p_plotly <- p_plotly %>%
     plotly::layout(
       xaxis = list(title = "Year of ocean entry"),
-      yaxis = list(title = "Smolt-to-adult survival \n(%)"),
+      yaxis = list(title = paste0("Smolt-to-adult survival", reach_value ,"\n(%)")),
       hovermode = "closest"
     )
 

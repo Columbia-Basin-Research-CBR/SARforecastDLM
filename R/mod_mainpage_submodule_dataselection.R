@@ -41,7 +41,7 @@ mod_mainpage_submodule_dataselection_ui <- function(id){
           inputId = ns("select_reach"),
           label = "Select Reach:",
           choices = unique(sar_raw_data$reach),
-          selected = "LGR-LGA",
+          selected = "Snake River Upper-Upper",
           multiple = FALSE
         )
       )
@@ -115,7 +115,7 @@ mod_mainpage_submodule_dataselection_server <- function(id, forecast_output){
 
     # Filter to get listed dataframe based on selection
     filtered_data <- reactive({
-      formatted_reach <- gsub("-", "", tolower(input$select_reach))
+      formatted_reach <- if (input$select_sar == "Scheuerell and Williams (2005)"){"lgrlga"} else { gsub("-", "", tolower(input$select_reach))} #used for model_output listed names lgrlga, bonboa (sw is kept at lgrlga)
       formatted_sar <- if(input$select_sar == "Scheuerell and Williams (2005)"){
         "sw"
       } else {
