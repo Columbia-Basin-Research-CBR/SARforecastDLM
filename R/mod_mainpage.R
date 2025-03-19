@@ -21,7 +21,7 @@ mod_mainpage_ui <- function(id){
         status = "primary",
         collapsible = TRUE,
         collapsed = FALSE,
-        title = "One-year ahead forecast of Chinook salmon survival",
+        title = "One-year ahead forecast of wild Snake River spring/summer Chinook salmon survival",
         "Dynamic Linear Modelling (DLM) to explore changes in ocean survival from marine indices",
       ),
 
@@ -45,16 +45,31 @@ mod_mainpage_ui <- function(id){
         collapsed = FALSE,
         title = "Model forecast",
         br(),
+        # div(
+        #   style = "text-align: right;",
+        #   shinyWidgets::prettySwitch(
+        #     inputId = ns("prediction_type"),
+        #     label = "View prediction using all data",
+        #     inline = TRUE,
+        #     status = "default",
+        #     fill = TRUE
+        #   )
+        # ),
         htmlOutput(ns("selected_range")),
         #plot comparison forecasts
         plotly::plotlyOutput(outputId = ns("plot_forecast_1")),
+        div(
+          style = "background-color: white; text-align: right; padding: 0 20px 10px 0; margin-top: -1px;",
+        uiOutput(ns("data_caption"))
+        ), #used for SW reach caption
         br(),
         h5("To compare model accuracy based on years of input data, select a year range below and select `Run Model` to update the forecast plot:"),
         br(),
         column(
           width = 4,
           # Add a slider input for year selection
-          uiOutput(ns("year_slider"))
+          uiOutput(ns("year_slider")),
+          uiOutput(ns("warning_message")) #warning to select atleast 7 years
         ),
         column(
           width = 2,
@@ -69,7 +84,11 @@ mod_mainpage_ui <- function(id){
         ),
         column(
           width = 6,
-          htmlOutput(ns("notification_text")), #future addition look into tool-tip hover for this shinyBS::tooltip
+          div(
+            id = ns("model_adjustments_box"),
+            style = "background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 10px; margin-top: 10px; font-family: monospace;",
+            verbatimTextOutput(ns("model_adjustments"))
+          )
         )
       ),
       #Index plot
@@ -103,6 +122,9 @@ mod_mainpage_server <- function(id, data){
     model_reset_clicked <- reactiveVal(FALSE)
     input_changed_after_run <- reactiveVal(FALSE)
 
+    #
+    convergence_status <- reactiveVal("Not run yet")
+
 
     # Observe changes in the "Run Model" button
     observeEvent(input$run_model, {
@@ -115,8 +137,12 @@ mod_mainpage_server <- function(id, data){
       # Disable the "Run Model" button - if nothing has been changed since last run
       updateActionButton(session, "run_model", label = "Run Model", disabled = TRUE)
 
+      index_val<-data()$index[1]
+      sar_val<- data()$sar.method[1]
+      reach_val<-if(data()$sar.method[1] == "Scheuerell and Williams (2005)") NULL else paste0( "(", data()$reach[1], ")")
+
       # Update the text to be displayed in output$selected_range
-      model_run_text(HTML(paste("<p><b>Model results for ",min_year(), "to", input$years_select, data()$index[1], " indice and ",  data()$sar.method[1], " SAR method.</b>
+      model_run_text(HTML(paste("<p><b>Model results for ",min_year(), "to", input$years_select, index_val, " indice and ",  sar_val, " SAR", reach_val, "method.</b>
                                 <br>To highlight specific areas of the plot, click on legend items to toggle on/off.")))
     })
 
@@ -125,6 +151,7 @@ mod_mainpage_server <- function(id, data){
       # When the "Reset Model" button is clicked, set model_run_clicked to FALSE
       model_run_clicked(FALSE)
       model_reset_clicked(TRUE)  # Set the reset state to TRUE
+      convergence_status("Not run yet")
 
 
       # Enable the "Run Model" button once the model has been reset
@@ -138,7 +165,7 @@ mod_mainpage_server <- function(id, data){
     })
 
     # Observe changes in the slider and/or the coastal index select input
-    observeEvent(list(input$years_select, data()$index[1], data()$sar.method[1]), {
+    observeEvent(list(input$years_select, data()$index[1], data()$sar.method[1], data()$reach[1]), {
       if ( model_run_once()) {
         # Only reset the plot if the model has not been run or has been reset
         model_reset_clicked(FALSE)
@@ -150,35 +177,65 @@ mod_mainpage_server <- function(id, data){
       }
     }, ignoreInit = TRUE)
 
-    output$notification_text <- renderUI({
-      HTML(paste("<div style='color: #b47747;'>",
-                 if (model_run_once() && input_changed_after_run()){
-                   paste("<br>
-            <b>Model adjustments:</b> ",
-                         "<ul>
-            <li> Year range:", min_year(), "-", input$years_select, "</li>
-            <li> Indice:", data()$index[1], "</li>
-            <li> SAR method:", data()$sar.method[1], "</li>
-            </ul>
-            Click 'Run Model' to see adjustments.")
-                 } else if (model_run_clicked() && !input_changed_after_run()) {
-                   "<br>Model has not changed, adjust parameters to re-run model."
-                 } else {
-                   NULL
-                 },
-                 "</div>")
-      )
+    #show when model has been adjusted--and status of run:
+    output$model_adjustments <- renderText({
+      status_color <- if (!is.null(convergence_status())) {
+        if (convergence_status() == "Success") {
+          "✓ Model converged."
+        } else if (convergence_status() == "Not run yet") {
+          "Not run yet"
+        } else if (convergence_status() == "Warning") {
+          "❗Model failed to converge. Returning predictions including past and present data versus to show model overfitting."  } else {
+       NULL
+          }
+      }
+        if (model_run_clicked() && !input_changed_after_run()) {
+          paste0(
+            "Model run settings:\n",
+            "Year range: ", min_year(), "-", input$years_select, "\n",
+            "Indice:     ", data()$index[1], "\n",
+            "SAR method: ", data()$sar.method[1], if(data()$sar.method[1] != "Scheuerell and Williams (2005)") paste0(" (", data()$reach[1], ")") else "",  "\n\n",
+            "Model convergence:", status_color, "\n\n",
+            "Adjust parameters to re-run model."
+          )
+        } else if (model_run_once() && input_changed_after_run()) {
+        paste0(
+          "Current settings:\n",
+          "Year range: ", min_year(), "-", input$years_select, "\n",
+          "Indice:     ", data()$index[1], "\n",
+          "SAR method: ", data()$sar.method[1], if(data()$sar.method[1] != "Scheuerell and Williams (2005)") paste0(" (", data()$reach[1], ")") else "", "\n\n",
+          "Click 'Run Model' to apply settings"
+        )
+      } else if (model_run_clicked() && !input_changed_after_run()) {
+        paste0(
+          "Model settings:\n",
+          "Year range: ", min_year(), "-", input$years_select, "\n",
+          "Indice:     ", data()$index[1], "\n",
+          "SAR method: ", data()$sar.method[1], if(data()$sar.method[1] != "Scheuerell and Williams (2005)") paste0(" (", data()$reach[1], ")") else "",  "\n\n",
+          "Model convergence:", status_color, "\n\n",
+          "Adjust parameters to re-run model."
+        )
+      } else {
+        "Select parameters\nThen click 'Run Model'"
+      }
     })
 
     # Reactive text output for slider once used
     output$selected_range <- renderUI({
       if (!model_run_once() || model_reset_clicked()) {
-        HTML(paste("<p><b>Model results for ",min_year(), "to", max_year(), data()$index[1], " indice and ",  data()$sar.method[1], " SAR method.</b>
-        <br>To highlight specific areas of the plot, click on legend items to toggle on/off."))
+
+        index_val<-data()$index[1]
+        sar_val<- data()$sar.method[1]
+        reach_val<-if(data()$sar.method[1] == "Scheuerell and Williams (2005)") NULL else paste0( "(", data()$reach[1], ")")
+
+        # Update the text to be displayed in output$selected_range
+        HTML(paste("<p><b>Model results for ",min_year(), "to", input$years_select, index_val, " indice and ",  sar_val, " SAR", reach_val, "method.</b>
+                                <br>To highlight specific areas of the plot, click on legend items to toggle on/off."))
       } else {
         model_run_text()
       }
     })
+
 
     # Reactive function to extract common variables for dynamic titles and slider
     common_vars <- reactive({
@@ -214,9 +271,18 @@ mod_mainpage_server <- function(id, data){
       vars <- common_vars()  # Get the common variables
 
       # Generate title based on selected index, method, and year range
-      title <- paste("One year ahead forecast with", vars$selected_index, "and", vars$selected_sar, ":", vars$min_year, "to", vars$max_year)
+      title <- paste("One year ahead forecast with", vars$selected_index, "and", vars$selected_sar, paste0("(", vars$selected_reach, ")"),":", vars$min_year, "to", vars$max_year)
 
       shiny::HTML(title)
+    })
+
+    output$data_caption <- renderUI({
+      vars <- common_vars()
+      if(vars$selected_sar == "Scheuerell and Williams (2005)"){
+        HTML("Scheuerell and Williams (2005) SAR method is estimated based on the uppermost dam on the Snake River, adjusting as dams were built upstream from 1964 to 2005.")
+      } else {
+       NULL
+      }
     })
 
     # Generate dynamic index title
@@ -242,10 +308,31 @@ mod_mainpage_server <- function(id, data){
                   label = "Select year range:",
                   min = vars$min_year,
                   max = vars$max_year,
-                  value =  vars$max_year, #round((vars$min_year + vars$max_year) / 2),#select middle year between min/max
+                  value = vars$max_year,
                   step = 1,
                   sep = "",
                   ticks = FALSE)
+    })
+
+    # Separate observer to check the selected value after the slider exists
+    observe({
+      req(input$years_select)  # This ensures the input exists before proceeding
+      vars <- common_vars()
+
+      # Check if selected year is at least 7 years greater than min year
+      if(input$years_select < (vars$min_year +6)) {
+        output$warning_message <- renderUI({
+          div(
+            style = "color: red; font-weight: normal; margin-top: 15px;",
+            paste0("Warning: Please select a span of at least 7 years, no earlier than ",
+                  (vars$min_year + 6), ".")
+          )
+        })
+      } else {
+        output$warning_message <- renderUI({
+          NULL  # Clear the warning when condition is met
+        })
+      }
     })
 
     # Reactive plots
@@ -274,12 +361,14 @@ mod_mainpage_server <- function(id, data){
         data_base(data())
       }
 
-
       # # Run the model
-      df_forecast<-fct_forecast_model(data = sar_raw_data,paramlist = paramlist, years_selected = selected_years, index_selected = selected_index, sar_method_selected = selected_sar, reach_selected = selected_reach)
+      model_results<-fct_forecast_model(data = sar_raw_data,paramlist = paramlist, years_selected = selected_years, index_selected = selected_index, sar_method_selected = selected_sar, reach_selected = selected_reach)
+
+      convergence_status(model_results$convergence_status)
+
 
       # Return df_forecast and selected_years
-      list(df_forecast = df_forecast,
+      list(df_forecast = model_results$df_forecast,
            selected_years = selected_years)
     })
 

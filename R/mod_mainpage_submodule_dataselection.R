@@ -41,7 +41,7 @@ mod_mainpage_submodule_dataselection_ui <- function(id){
           inputId = ns("select_reach"),
           label = "Select Reach:",
           choices = unique(sar_raw_data$reach),
-          selected = "LGR_LGA",
+          selected = "LGR-LGA",
           multiple = FALSE
         )
       )
@@ -105,7 +105,7 @@ mod_mainpage_submodule_dataselection_server <- function(id, forecast_output){
       updateSelectInput(session, "select_sar", choices = options$sar_methods,
                         selected = if (input$select_sar %in% options$sar_methods) input$select_sar else options$sar_methods[1])
 
-      updateSelectInput(session, "select_reach", choices = options$reaches,
+      updateSelectInput(session, "select_reach", choices =  options$reaches,
                         selected = if (input$select_reach %in% options$reaches) input$select_reach else options$reaches[1])
 
       updateSelectInput(session, "select_index", choices = options$indices,
@@ -115,7 +115,7 @@ mod_mainpage_submodule_dataselection_server <- function(id, forecast_output){
 
     # Filter to get listed dataframe based on selection
     filtered_data <- reactive({
-      formatted_reach <- gsub("_", "", tolower(input$select_reach))
+      formatted_reach <- gsub("-", "", tolower(input$select_reach))
       formatted_sar <- if(input$select_sar == "Scheuerell and Williams (2005)"){
         "sw"
       } else {
