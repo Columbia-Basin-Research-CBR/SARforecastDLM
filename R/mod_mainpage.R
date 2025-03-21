@@ -22,17 +22,32 @@ mod_mainpage_ui <- function(id){
         collapsible = TRUE,
         collapsed = FALSE,
         title = "One-year ahead forecast of wild Snake River spring/summer Chinook salmon survival",
-        "Dynamic Linear Modelling (DLM) to explore changes in ocean survival from marine indices",
+        "Dynamic Linear Modeling (DLM) to explore changes in ocean survival from marine indices",
       ),
 
 
       shinydashboard::box(
         width = 12,
-        title = "Marine indices as a predictor of salmon survival",
+        # title = "Marine indices as a predictor of salmon survival",
         status = "info",
         collapsible = TRUE,
         collapsed = FALSE,
-        shiny::includeHTML(system.file("app/www/mod_mainpage_upwelling_text.html", package = "SARforecastDLM")),
+        title = div(
+          style = "display: inline-flex; align-items: center;", # align text to info icon
+          span("Marine indices as a predictor of salmon survival"),
+          div(
+            style = "padding-left: 10px;", # add padding to avoid overlap
+            shinyWidgets::dropdownButton(
+              circle = FALSE,
+              label = "Covariate Insights",
+              size = "xs",
+              icon = icon("search", style = "color: #024c63; border-color: #024c63; border-width: 1px;"),
+              width = "800px",
+              shiny::includeHTML(system.file("app/www/mod_mainpage_upwelling_text.html", package = "SARforecastDLM"))
+            )
+          )
+        ),
+        HTML("<p>This application allows you to explore differences in marine indices and related changes to the DLM forecast of salmon survival using the smolt-to-adult survival rate (SAR) reported in Scheurell and Williams (2005), along with two other more recent estimates of SAR for comparison: SAR reported by Data Access in Real-Time (DART), Columbia Basin Research, and predicted SAR via Cormack-Jolly-Seber modeling (CJS; Cormack 1964, Jolly 1965, Seber 1965). Select a marine indice and SAR method to compare changes in forecasted survival.</p>"),
         br(),
         mod_mainpage_submodule_dataselection_ui("submodule_dataselection_1")
       ),
@@ -43,7 +58,27 @@ mod_mainpage_ui <- function(id){
         status = "info",
         collapsible = TRUE,
         collapsed = FALSE,
-        title = "Model forecast",
+        title = div(
+          style = "display: inline-flex; align-items: center;", # align text to info icon
+          span("DLM-forecasted one-year ahead salmon survival with marine indices as a covariate"),
+          div(
+            style = "padding-left: 10px;", # add padding to avoid overlap
+            shinyWidgets::dropdownButton(
+              circle = FALSE,
+              label = "Forecast Insights",
+              size = "xs",
+              icon = icon("search", style = "color: #024c63; border-color: #024c63; border-width: 1px;"),
+              width = "800px",
+              HTML("<div style='color: inherit; font-size: inherit; font-family: inherit; margin: 10px; line-height: 1.5;'>
+               <p>This Shiny application is designed as an exploratory tool to compare different marine indices with more recent SAR estimation methods. To ensure the Dynamic Linear Model (DLM) can successfully generate forecasts despite variability in SAR data, we have made certain modeling assumptions. Specifically, for SAR methods with fewer years of data (DART and CJS), we set the observational error to a fixed value to aid model convergence. Additionally, we allow process variance to differ across states and covary between them. See the <em>Supplemental Information</em> section for a more detailed explanation of these assumptions and their implementation.</p>
+              <p>In a DLM, forecasts can be generated using only past data, or by incorporating all available observations, including future data. However, due to the assumption of using a fixed observation error, our SAR estimates do not include future data, resulting in a more conservative forecast with wider confidence intervals.</p>
+               <p>As such, we refer to the model output as a forecast since the estimate of SAR (<em>t</em> + 1) is conditioned on data from the starting year (<em>t</em> = 1) up to the year prior (<em>t</em> - 1). Each year's estimate is a one-step ahead forecast, incorporating the previous years' states and variance. </p>
+
+               <p>To explore how the forecast changes based on the number of years of input data, see <i class='fa fa-toggle-on' style='color: #024c63; font-size: 16px;'></i> switch option below the plot.</p>
+              </div>")
+            )
+          )
+        ),
         br(),
         # div(
         #   style = "text-align: right;",
@@ -63,8 +98,23 @@ mod_mainpage_ui <- function(id){
         uiOutput(ns("data_caption"))
         ), #used for SW reach caption
         br(),
-        h5("To compare model accuracy based on years of input data, select a year range below and select `Run Model` to update the forecast plot:"),
         br(),
+        shinyWidgets::prettySwitch(
+          inputId = "show_model_run_options",
+          label = "Interested in how the DLM-forecasts vary with different input years? Click to explore.",
+          inline = TRUE,
+          value = FALSE,
+          status = "default",
+          fill = TRUE
+        ),
+        #conditional inputs for model run
+        conditionalPanel(
+          condition = "input.show_model_run_options == true",
+          column(
+            width = 12,
+          # mod_mainpage_submodule_modelrun_ui("submodule_modelrun_1")
+        HTML("<div style ='style='color: inherit; font-size: inherit; font-family: inherit;margin-left: 20px; margin-right: 20px; line-height: 1.5;'>
+As you adjust the year range, the model's ability to estimate underlying trends changes. With more years, the model captures patterns more reliably, but reducing the range can lead to convergence issues, especially with high variability. The DART and CJS SAR methods remain stable due to fixed observation error. In contrast, for the Scheuerell and Williams (2005) SAR method, the DLM estimates observation error, making it more sensitive to shorter time series and more likely to fail to converge as the range decreases.<br></br>"),
         column(
           width = 4,
           # Add a slider input for year selection
@@ -90,6 +140,8 @@ mod_mainpage_ui <- function(id){
             verbatimTextOutput(ns("model_adjustments"))
           )
         )
+          )
+        )
       ),
       #Index plot
       shinydashboard::box(
@@ -103,7 +155,7 @@ mod_mainpage_ui <- function(id){
           offset = 1, # Centering the column
           plotly::plotlyOutput(outputId = ns("plot_index"),height = "50%")
         )
-      ),
+      )
     )
   )
 }
@@ -140,7 +192,7 @@ mod_mainpage_server <- function(id, data){
       reach_val<-if(data()$sar.method[1] == "Scheuerell and Williams (2005)") NULL else paste0( "(", data()$reach[1], ")")
 
       # Update the text to be displayed in output$selected_range
-      model_run_text(HTML(paste("<p><b>Model results for ",min_year(), "to", input$years_select, index_val, " indice and ",  sar_val, " SAR", reach_val, "method.</b>
+      model_run_text(HTML(paste("<p><b>Model results for ",min_year(), "to", input$years_select, index_val, " index and ",  sar_val, " SAR", reach_val, "method.</b>
                                 <br>To highlight specific areas of the plot, click on legend items to toggle on/off.")))
     })
 
@@ -183,7 +235,7 @@ mod_mainpage_server <- function(id, data){
         } else if (convergence_status() == "Not run yet") {
           "Not run yet"
         } else if (convergence_status() == "Warning") {
-          "❗Model failed to converge. Returning predictions including past and present data versus to show model overfitting."  } else {
+          "❗Model failed to converge. Returning estimates for entire range of years"} else {
        NULL
           }
       }
@@ -191,7 +243,7 @@ mod_mainpage_server <- function(id, data){
           paste0(
             "Model run settings:\n",
             "Year range: ", min_year(), "-", input$years_select, "\n",
-            "Indice:     ", data()$index[1], "\n",
+            "Marine Index:     ", data()$index[1], "\n",
             "SAR method: ", data()$sar.method[1], if(data()$sar.method[1] != "Scheuerell and Williams (2005)") paste0(" (", data()$reach[1], ")") else "",  "\n\n",
             "Model convergence:", status_color, "\n\n",
             "Adjust parameters to re-run model."
@@ -200,7 +252,7 @@ mod_mainpage_server <- function(id, data){
         paste0(
           "Current settings:\n",
           "Year range: ", min_year(), "-", input$years_select, "\n",
-          "Indice:     ", data()$index[1], "\n",
+          "Marine Index:     ", data()$index[1], "\n",
           "SAR method: ", data()$sar.method[1], if(data()$sar.method[1] != "Scheuerell and Williams (2005)") paste0(" (", data()$reach[1], ")") else "", "\n\n",
           "Click 'Run Model' to apply settings"
         )
@@ -208,7 +260,7 @@ mod_mainpage_server <- function(id, data){
         paste0(
           "Model settings:\n",
           "Year range: ", min_year(), "-", input$years_select, "\n",
-          "Indice:     ", data()$index[1], "\n",
+          "Marine Index:     ", data()$index[1], "\n",
           "SAR method: ", data()$sar.method[1], if(data()$sar.method[1] != "Scheuerell and Williams (2005)") paste0(" (", data()$reach[1], ")") else "",  "\n\n",
           "Model convergence:", status_color, "\n\n",
           "Adjust parameters to re-run model."
@@ -230,7 +282,7 @@ mod_mainpage_server <- function(id, data){
         reach_val<-if(data()$sar.method[1] == "Scheuerell and Williams (2005)") NULL else paste0( "(", data()$reach[1], ")")
 
         # Update the text to be displayed in output$selected_range
-        HTML(paste("<p><b>Model results for ",min_year(), "to", input$years_select, index_val, " indice and ",  sar_val, " SAR", reach_val, "method.</b>
+        HTML(paste("<p><b>Model results for ",min_year(), "to", input$years_select, index_val, " index and ",  sar_val, " SAR", reach_val, "method.</b>
                                 <br>To highlight specific areas of the plot, click on legend items to toggle on/off."))
       } else {
         model_run_text()
@@ -385,6 +437,7 @@ mod_mainpage_server <- function(id, data){
 
       # Return df_forecast and selected_years
       list(df_forecast = model_results$df_forecast,
+           convergence_status = model_results$convergence_status,
            selected_years = selected_years)
     })
 
@@ -408,7 +461,7 @@ mod_mainpage_server <- function(id, data){
         #Check if model_run is not NULL (i.e., model has been run)
       } else if (model_run_clicked() && !is.null(model_run())) {
         # If model_run has been run, plot the results of the select years in the model run compare plot
-        fct_forecast_compare_plot(data_base = data_base() , data_select = model_run()$df_forecast, years_selected = model_run()$selected_years)
+        fct_forecast_compare_plot(data_base = data_base() , data_select = model_run()$df_forecast, years_selected = model_run()$selected_years, convergence_status = model_run()$convergence_status)
       }
 
     })

@@ -13,7 +13,7 @@ mod_about_page_ui <- function(id){
 
     fluidRow(
       shinydashboard::box(
-        title = "Welcome to SARforecastDLM,<small style ='font-size:0.6em;'>BetaVersion.Mar25</small>",
+        title = HTML("Welcome to SARforecastDLM,<small style ='font-size:0.6em; color: white;'>BetaVersion.Mar25</small>"),
         width = 12,
         solidHeader = TRUE,
         status = "primary",
@@ -46,7 +46,7 @@ mod_about_page_ui <- function(id){
         width = 12,
         solidHeader = FALSE,
         collapsible = TRUE,
-        collapsed = TRUE,
+        collapsed = FALSE,
         status = "primary",
         shiny::includeHTML(system.file("app/www/mod_about_overview_text.html", package = "SARforecastDLM"))
       )
