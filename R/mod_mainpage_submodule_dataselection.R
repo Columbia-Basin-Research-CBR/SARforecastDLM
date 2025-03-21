@@ -9,6 +9,14 @@
 #' @importFrom shiny NS tagList
 mod_mainpage_submodule_dataselection_ui <- function(id){
   ns <- NS(id)
+
+  index_choices <- c(
+    "Coastal Upwelling Index (CUTI)" = "CUI",
+    "Coastal Upwelling Transport Index (CUTI)" = "CUTI",
+    "Northern Copepod Biomass Index (NCBI)" = "NCBI",
+    "Index of Coastal Prey Biomass (ICPB)" = "ICPB"
+  )
+
   tagList(
 
     fluidRow(
@@ -18,7 +26,7 @@ mod_mainpage_submodule_dataselection_ui <- function(id){
         selectInput(
           inputId = ns("select_index"),
           label = "Select marine index",
-          choices = unique(sar_raw_data$index),
+          choices = index_choices,
           selected = "CUI",
           multiple = FALSE
         )
@@ -80,6 +88,13 @@ mod_mainpage_submodule_dataselection_server <- function(id, forecast_output){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
+    index_display_map <- c(
+      "CUI" = "Coastal Upwelling Index (CUI)",
+      "CUTI" = "Coastal Upwelling Transport Index (CUTI)",
+      "NCBI" = "Northern Copepod Biomass Index (NCBI)",
+      "ICPB" = "Index of Coastal Prey Biomass (ICPB)"
+    )
+
     # Valid combos of models
     valid_combinations <- unique(sar_raw_data[, c("index", "sar.method", "reach")]) %>% tidyr::drop_na()
 
@@ -98,9 +113,20 @@ mod_mainpage_submodule_dataselection_server <- function(id, forecast_output){
       )
     })
 
+    # Helper function to create named choices
+    create_named_choices <- function(values, display_map) {
+      choices <- setNames(values, sapply(values, function(v) {
+        if (v %in% names(display_map)) display_map[v] else v
+      }))
+      return(choices)
+    }
+
     # Observe all inputs and update them in the correct order-- avoids errors
     observe({
       options <- valid_options()
+
+      index_choices <- create_named_choices(options$indices, index_display_map)
+
 
       updateSelectInput(session, "select_sar", choices = options$sar_methods,
                         selected = if (input$select_sar %in% options$sar_methods) input$select_sar else options$sar_methods[1])
@@ -108,7 +134,7 @@ mod_mainpage_submodule_dataselection_server <- function(id, forecast_output){
       updateSelectInput(session, "select_reach", choices =  options$reaches,
                         selected = if (input$select_reach %in% options$reaches) input$select_reach else options$reaches[1])
 
-      updateSelectInput(session, "select_index", choices = options$indices,
+      updateSelectInput(session, "select_index", choices = index_choices,
                         selected = if (input$select_index %in% options$indices) input$select_index else options$indices[1])
     })
 
