@@ -2,7 +2,7 @@
 #'
 #' @description using DLM via MARSS package, plot the forecasted values and CI for the SAR in the next year
 #'
-#' @return plotly figure with highlighted portion to show forecasted values versus out-of-sample.
+#' @return plotly figure with highlighted portion to show forecasted values versus one-step ahead.
 #'
 #' @noRd
 
@@ -20,6 +20,7 @@ fct_forecast_plot <- function(data) {
     } else { NULL }
   }
 
+  print(reach_value)
 
   # Add observed and predicted SAR lines and markers
   p_plotly <- p_plotly %>%
@@ -38,10 +39,10 @@ fct_forecast_plot <- function(data) {
       data = data,
       x = ~year,
       y = ~estimate,
-      name = paste("Predicted SAR,\ninc.", min(data$year), "to", max(data$year)-1, "SAR"),
+      name = paste("Forecasted SAR,\ninc.", min(data$year), "to", max(data$year)-1, "SAR"),
       legendgroup = "forecasted",
       legendrank = 2,
-      text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR", paste0("(",data$reach,"):"),custom_round(estimate),"%"),
+      text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR", paste0("(",data$reach,"):"),custom_round(estimate),"%"),
       hoverinfo = "text",
       line = list(color = color),
       hoverinfo = "text"
@@ -50,10 +51,10 @@ fct_forecast_plot <- function(data) {
       data = data,
       x = ~year,
       y = ~estimate,
-      name = paste("Predicted SAR,\ninc.", min(data$year), "to", max(data$year)-1, "SAR"),
+      name = paste("Forecasted SAR,\ninc.", min(data$year), "to", max(data$year)-1, "SAR"),
       legendgroup = "forecasted",
       legendrank = 2,
-      text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR", paste0("(",data$reach,"):"),custom_round(estimate),"%"),
+      text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR", paste0("(",data$reach,"):"),custom_round(estimate),"%"),
       hoverinfo = "text",
       marker = list(size = 6, color = color),
       showlegend = FALSE
@@ -65,7 +66,7 @@ fct_forecast_plot <- function(data) {
       name = "Upper 95% CI",
       legendgroup = "forecasted",
       legendrank = 2,
-      text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR", paste0("(",data$reach,")"), "upper 95% CI:", custom_round(hi_95)),
+      text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR", paste0("(",data$reach,")"), "upper 95% CI:", custom_round(hi_95)),
       line = list(
         dash = "dash",
         color = color
@@ -79,7 +80,7 @@ fct_forecast_plot <- function(data) {
       name = "Lower 95% CI",
       legendgroup = "forecasted",
       legendrank = 2,
-      text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR", paste0("(",data$reach,")"), "lower 95% CI:", custom_round(lo_95)),
+      text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR", paste0("(",data$reach,")"), "lower 95% CI:", custom_round(lo_95)),
       line = list(
         dash = "dash",
         color = color
@@ -111,7 +112,7 @@ fct_forecast_plot <- function(data) {
         symbol = "star-square"  # Change shape of point to cross
       ),
       line = list(color = color),
-      name = "Forecasted SAR,\nout-of-sample",
+      name = "Forecasted SAR,\none-step ahead",
       # legendgroup = "forecasted2",
       legendrank = 2,
       mode = "none",

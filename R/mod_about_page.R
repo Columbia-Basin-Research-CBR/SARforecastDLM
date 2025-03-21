@@ -13,7 +13,7 @@ mod_about_page_ui <- function(id){
 
     fluidRow(
       shinydashboard::box(
-        title = "Welcome to SARforecastDLM,",
+        title = "Welcome to SARforecastDLM,<small style ='font-size:0.6em;'>BetaVersion.Mar25</small>",
         width = 12,
         solidHeader = TRUE,
         status = "primary",

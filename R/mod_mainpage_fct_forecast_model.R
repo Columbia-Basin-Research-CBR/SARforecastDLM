@@ -84,10 +84,12 @@ fct_forecast_model<-function(data, paramlist, years_selected, index_selected, sa
   dlm <- MARSS::MARSS(dat, inits = inits_list, model = mod_list)
   convergence_status <- ifelse(dlm$convergence == 0, "Success", "Warning")
 
+
+
 forecast_results<-if(convergence_status == "Warning"){
-    forecast_ytT<-MARSS::forecast(dlm, h= 1, newdata = list(z = index_z_test, y = train_data[nrow(train_data),2]), type = "ytT", interval = "confidence", fun.kf = "MARSSkfss")
+    forecast_ytT<-MARSS::forecast(dlm, h= 1, newdata = list(z = index_z_test), type = "ytT", interval = "confidence", fun.kf = "MARSSkfss")
   } else if (convergence_status == "Success"){
-  forecast_ytt1<-MARSS::forecast(dlm, h= 1, newdata = list(z = index_z_test, y = train_data[nrow(train_data),2]), type = "ytt1", interval = "confidence", fun.kf = "MARSSkfss")
+  forecast_ytt1<-MARSS::forecast(dlm, h= 1, newdata = list(z = index_z_test), type = "ytt1", interval = "confidence", fun.kf = "MARSSkfss")
   }
 
   # adjust years for sar's with missing years
@@ -95,7 +97,7 @@ forecast_results<-if(convergence_status == "Warning"){
     year_vector <-  c(2000:2004, 2006:max(years_selected + 1))
     print(year_vector)
   } else {
-    year_vector <- min(years):(max(years) + 1)
+    year_vector <- min(years):max(years+1)
   }
 
   df_forecast <- forecast_results$pred %>%
@@ -120,7 +122,7 @@ forecast_results<-if(convergence_status == "Warning"){
 }
 
 
-#
-# fct_forecast_model(data = sar_raw_data, paramlist = paramlist, years_selected = 1964:1970,index_selected = "CUI", sar_method_selected = "Scheuerell and Williams (2005)", reach_selected = "LGR-LGA")
-#
+# #
+# fct_forecast_model(data = sar_raw_data, paramlist = paramlist, years_selected = 1964:2005,index_selected = "CUI", sar_method_selected = "Scheuerell and Williams (2005)", reach_selected = "Snake River Upper-Upper")
+
 

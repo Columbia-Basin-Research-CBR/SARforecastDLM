@@ -78,11 +78,11 @@ run_model_and_forecast <- function(data, inputQ, inputB, inputR, inputU) {
 
   
   ## forecast
-  forecast_ytt1<-MARSS::forecast(dlm, h= 1, newdata = list(z = index_z_test, y = train.data[nrow(train.data),2]), type = "ytt1", interval = "confidence", fun.kf = "MARSSkfss") 
+  forecast_ytt1<-MARSS::forecast(dlm, h= 1, newdata = list(z = index_z_test), type = "ytt1", interval = "confidence", fun.kf = "MARSSkfss") #removed adding last year data point to return NA for observed in pred output; y = train.data[nrow(train.data),2]
 
   
     # Determine the year vector based on the condition
-  if (unique(data$sar.method) == "DART" && unique(data$reach) == "BON_BOA") {
+  if (unique(data$sar.method) == "DART" && unique(data$reach) == "BON-BOA") {
     year_vector <- c(2000:2004, 2006:2023)
   } else {
     year_vector <- min(years):(max(years) + 1)
@@ -112,12 +112,12 @@ run_model_and_forecast <- function(data, inputQ, inputB, inputR, inputU) {
 ```
 
 
-```{r fct_MARSS_model_example}
-params<-paramlist %>% filter(sar.method == "CJS", index == "CUTI", reach == "LGR_LGA") 
+```{r fct_MARSS_model_example, eval = FALSE}
+params<-paramlist %>% filter(sar.method == "DART", index == "CUI", reach == "BON-BOA") 
 
 # #example
 mod<-run_model_and_forecast(
-  data = sar_raw_data %>% filter(sar.method == "CJS", index == "CUTI", reach == "LGR_LGA"),
+  data = sar_raw_data %>% filter(sar.method == "DART", index == "CUI", reach == "BON-BOA"),
   inputQ = params$Qinput,   
   inputB = params$Binput, 
   inputR = params$Rinput,
@@ -178,7 +178,7 @@ for(i in seq_len(nrow(combinations))) {
   
   map_sar_names<- c("Scheuerell and Williams (2005)" = "sw", "DART" = "dart", "CJS" = "cjs")
   map_index_names<- c("CUI" = "cui", "CUTI" = "cuti", "ICPB" = "icpb", "NCBI" = "ncbi")
-  map_reach_names<- c("LGR_LGA" = "lgrlga", "BON_BOA" = "bonboa")
+  map_reach_names<- c("LGR-LGA" = "lgrlga", "BON-BOA" = "bonboa", "Snake River Upper-Upper" = "uppupp")
   
   # Create the name for the sublist
   combination_name <- paste(map_sar_names[combinations$sar.method[i]], map_index_names[combinations$index[i]], map_reach_names[combinations$reach[i]], sep = "_")
@@ -187,10 +187,101 @@ for(i in seq_len(nrow(combinations))) {
   forecast_output[[combination_name]] <- forecast
 }
 
+```
+
+# view output
+
+```{r, fig.width=12, fig.height=7}
+base_plot_data %>% 
+  ggplot(aes(x = year)) +
+  geom_line(aes(y= estimate)) +
+  geom_line(aes(y =fore_CI_95_lower), linetype = "dashed") +
+  geom_line(aes(y = fore_CI_95_upper), linetype = "dashed") +
+  geom_point(aes(y = estimate), shape = 16) +
+  geom_point(aes(y = y), shape = 21) +
+  facet_grid(index~sar.method, scales = "free")+
+  labs(title = "Observed vs Predicted by SAR method and Index",
+       x = "Year",
+       y = "Value") +
+  theme_minimal() 
+
+colors <- c("CUI" = "red", "CUTI" = "blue", "ICPB" = "green", "NCBI" = "purple")
+
+base_plot_data %>% 
+  ggplot(aes(x = year, color = index)) +
+  geom_line(aes(y= estimate)) +
+  geom_line(aes(y =fore_CI_95_lower), linetype = "dashed") +
+  geom_line(aes(y = fore_CI_95_upper), linetype = "dashed") +
+  geom_point(aes(y = estimate ), shape = 16) +
+  geom_point(aes(y = y), color = "black", shape = 21) +
+  scale_color_manual(values = colors)+
+  facet_grid(sar.method~., scales = "free_y")+
+  labs(title = "Observed vs Predicted by Index",
+       x = "Year",
+       y = "Value") +
+  theme_bw()
+
+base_plot_data %>% 
+  ggplot(aes(x = year)) +
+  geom_line(aes(y = y, color = sar.method))+
+  geom_point(aes(y = y, color = sar.method), shape = 21) +
+  labs(title = "Observed SAR by method input into model",
+       x = "Year",
+       y = "Value") +
+  theme_bw()
+
+
+#observed vs predicted
+base_plot_data %>% 
+  ggplot(aes(y = y, x = estimate)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  labs(y = "Observed", x = "Predicted") +
+  # xlim(0,5) +
+  # ylim(0,5) +
+  facet_grid(index~sar.method) + 
+  theme_bw()
+
+sar.method <-  "CJS" #"DART" #"Scheurell and Williams (2005)"
+index <- "CUI"
+sub.qq<-filter(base_plot_data, sar.method == !!sar.method & index == !!index)
+
+
+qqnorm(sub.qq$y)
+qqline(sub.qq$y)
+
+plot(density(sub.qq.marss$y, na.rm = TRUE), 
+     main = "Density Plot", 
+     xlab = "Values")
+curve(dnorm(x, mean(sub.qq.marss$y, na.rm = TRUE), sd(sub.qq.marss$y, na.rm = TRUE)), 
+      col = "red", 
+      add = TRUE)
+
+plot(density(sub.qq.dart$y, na.rm = TRUE), 
+     main = "Density Plot", 
+     xlab = "Values")
+curve(dnorm(x, mean(sub.qq.dart$y, na.rm = TRUE), sd(sub.qq.dart$y, na.rm = TRUE)), 
+      col = "red", 
+      add = TRUE)
+
+plot(density(sub.qq.cjs$y, na.rm = TRUE), 
+     main = "Density Plot", 
+     xlab = "Values")
+curve(dnorm(x, mean(sub.qq.cjs$y, na.rm = TRUE), sd(sub.qq.cjs$y, na.rm = TRUE)), 
+      col = "red", 
+      add = TRUE)
+
+```
+
+
+## save files to data in compressed .rda format for golem package usage in app
+```{r save_output_files, eval=FALSE}
 usethis::use_data(forecast_output, overwrite = TRUE)
 
 ```
 
+
+--- 
 ```{r fct_MARSS_model_manual forecast, eval = FALSE}
 ## forecast
 ## get list of Kalman filter output
@@ -297,96 +388,4 @@ return(results)
 }
 ```
 
-# view output
-ˆ
-
-```{r, fig.width=12, fig.height=7}
-base_plot_data %>% 
-  ggplot(aes(x = year)) +
-  geom_line(aes(y= estimate)) +
-  geom_line(aes(y =fore_CI_95_lower), linetype = "dashed") +
-  geom_line(aes(y = fore_CI_95_upper), linetype = "dashed") +
-  geom_point(aes(y = estimate), shape = 16) +
-  geom_point(aes(y = y), shape = 21) +
-  facet_grid(index~sar.method, scales = "free")+
-  labs(title = "Observed vs Predicted by SAR method and Index",
-       x = "Year",
-       y = "Value") +
-  theme_minimal() 
-
-colors <- c("CUI" = "red", "CUTI" = "blue", "ICPB" = "green", "NCBI" = "purple")
-
-base_plot_data %>% 
-  ggplot(aes(x = year, color = index)) +
-  geom_line(aes(y= estimate)) +
-  geom_line(aes(y =fore_CI_95_lower), linetype = "dashed") +
-  geom_line(aes(y = fore_CI_95_upper), linetype = "dashed") +
-  geom_point(aes(y = estimate ), shape = 16) +
-  geom_point(aes(y = y), color = "black", shape = 21) +
-  scale_color_manual(values = colors)+
-  facet_grid(sar.method~., scales = "free_y")+
-  labs(title = "Observed vs Predicted by Index",
-       x = "Year",
-       y = "Value") +
-  theme_bw()
-
-base_plot_data %>% 
-  ggplot(aes(x = year)) +
-  geom_line(aes(y = y, color = sar.method))+
-  geom_point(aes(y = y, color = sar.method), shape = 21) +
-  labs(title = "Observed SAR by method input into model",
-       x = "Year",
-       y = "Value") +
-  theme_bw()
-
-
-#observed vs predicted
-base_plot_data %>% 
-  ggplot(aes(y = y, x = estimate)) +
-  geom_point() +
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
-  labs(y = "Observed", x = "Predicted") +
-  # xlim(0,5) +
-  # ylim(0,5) +
-  facet_grid(index~sar.method) + 
-  theme_bw()
-
-sar.method <-  "CJS" #"DART" #"Scheurell and Williams (2005)"
-index <- "CUI"
-sub.qq<-filter(base_plot_data, sar.method == !!sar.method & index == !!index)
-
-
-qqnorm(sub.qq$y)
-qqline(sub.qq$y)
-
-plot(density(sub.qq.marss$y, na.rm = TRUE), 
-     main = "Density Plot", 
-     xlab = "Values")
-curve(dnorm(x, mean(sub.qq.marss$y, na.rm = TRUE), sd(sub.qq.marss$y, na.rm = TRUE)), 
-      col = "red", 
-      add = TRUE)
-
-plot(density(sub.qq.dart$y, na.rm = TRUE), 
-     main = "Density Plot", 
-     xlab = "Values")
-curve(dnorm(x, mean(sub.qq.dart$y, na.rm = TRUE), sd(sub.qq.dart$y, na.rm = TRUE)), 
-      col = "red", 
-      add = TRUE)
-
-plot(density(sub.qq.cjs$y, na.rm = TRUE), 
-     main = "Density Plot", 
-     xlab = "Values")
-curve(dnorm(x, mean(sub.qq.cjs$y, na.rm = TRUE), sd(sub.qq.cjs$y, na.rm = TRUE)), 
-      col = "red", 
-      add = TRUE)
-
-```
-
-
-## save files to data in compressed .rda format for golem package usage in app
-```{r save_data_files, eval=FALSE}
-usethis::use_data(base_plot_data, overwrite = TRUE)
-usethis::use_data(base_plot_data, overwrite = TRUE)
-
-```
 

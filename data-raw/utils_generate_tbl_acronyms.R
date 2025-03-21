@@ -11,8 +11,10 @@ generate_list <- function() {
     Acronyms = c(
       "BOA",
       "BON",
+      "CJS",
       "CUI",
       "CUTI",
+      "DART",
       "DLM",
       "ICPB",
       "LGA",
@@ -23,8 +25,10 @@ generate_list <- function() {
     Description = c(
       "Bonneville Dam, adult detection site",
       "Bonneville Dam, juvenile detection site",
+      "Cormack-Jolly-Seber (Cormack 1964, Jolly 1965, Seber 1965)",
       "Pacific Coastal Upwelling Index or Bakun index (Bakun 1973,1975)",
       "Coastal Upwelling Transport Index (Jacox et al., 2018)",
+      "Data Access in Real-Time (Columbia Basin Research, University of Washington)",
       "Dynamic Linear Model",
       "Index of Coastal Prey Biomass (Daly et al., 2013)",
       "Lower Granite Dam, adult detection site",

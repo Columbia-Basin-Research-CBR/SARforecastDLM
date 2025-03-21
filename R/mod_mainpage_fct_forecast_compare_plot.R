@@ -9,7 +9,8 @@
 #' @noRd
 
 
-fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
+fct_forecast_compare_plot <- function(data_base, data_select, years_selected, convergence_status) {
+  print(convergence_status)
  #next step look into removing last year of data_base for first plot
   data_base <-data_base %>%
     dplyr::filter(dplyr::between(year, min(year), max(year)))
@@ -46,7 +47,9 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
       hoverinfo = "text",
       marker = list(color = "#024c63", symbol = "circle-open")
     )
-  if (max(years_selected) != max(data_base$year)-1){
+  if (max(years_selected) != max(data_base$year)-1 && (convergence_status == "Success")){
+
+    print("Model successfully converged, returning plot with forecasted SAR")
 
     #define color outside loop for rectangle
     color <- colors[names(data_list[2])]
@@ -62,10 +65,10 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         data = data_list[[i]],
         x = ~year,
         y = ~estimate,
-        name = ifelse(names(data_list[i]) == "base_forecast", paste("Predicted SAR,\ninc.", min(data_base$year),":",max(data_base$year)-1), paste("Predicted SAR,\ninc.", min(data_select$year),":",max(data_select$year-1))),
+        name = ifelse(names(data_list[i]) == "base_forecast", paste("Forecasted SAR,\ninc.", min(data_base$year),":",max(data_base$year)-1), paste("Forecasted SAR,\ninc.", min(data_select$year),":",max(data_select$year-1))),
         legendgroup = paste("forecasted", i),
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR (%):", custom_round(estimate)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR (%):", custom_round(estimate)),
         hoverinfo = "text",
         line = list(color = color),
         hoverinfo = "text"
@@ -74,10 +77,10 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         data = data_list[[i]],
         x = ~year,
         y = ~estimate,
-        name = ifelse(names(data_list[i]) == "base_forecast", paste("Predicted SAR,\ninc.", min(data_base$year),":",max(data_base$year)-1),  paste("Predicted SAR,\ninc.", min(data_select$year),":",max(data_select$year-1))),
+        name = ifelse(names(data_list[i]) == "base_forecast", paste("Forecasted SAR,\ninc.", min(data_base$year),":",max(data_base$year)-1),  paste("Forecasted SAR,\ninc.", min(data_select$year),":",max(data_select$year-1))),
         legendgroup = paste("forecasted", i),
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR (%):", custom_round(estimate)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR (%):", custom_round(estimate)),
         hoverinfo = "text",
         marker = list(size = 6, color = color),
         showlegend = FALSE
@@ -89,7 +92,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         name = "Upper 95% CI",
         legendgroup = paste("forecasted", i),
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR upper 95% CI:", custom_round(hi_95)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR upper 95% CI:", custom_round(hi_95)),
         line = list(
           dash = "dash",
           color = color
@@ -103,7 +106,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
         name = "Lower 95% CI",
         legendgroup = paste("forecasted", i),
         legendrank = 2,
-        text = ~ paste("Year of ocean entry:", year, "<br>Predicted SAR lower 95% CI:", custom_round(lo_95)),
+        text = ~ paste("Year of ocean entry:", year, "<br>Forecasted SAR lower 95% CI:", custom_round(lo_95)),
         line = list(
           dash = "dash",
           color = color
@@ -135,7 +138,7 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
             symbol = "star-square"  # Change shape of point to cross
           ),
           line = list(color = color),
-          name = "Forecasted SAR,\nout-of-sample",
+          name = "Forecasted SAR,\none-step ahead",
           legendgroup = paste("forecasted", i),
           legendrank = 3,
           mode = "none",
@@ -163,6 +166,26 @@ fct_forecast_compare_plot <- function(data_base, data_select, years_selected) {
   return(p_plotly)
 
   } else {
+
+    if(convergence_status == "Warning"){
+      print("Forecasted SAR for the next year is not available due to convergence issues.")
+
+      # Add warning annotation to the plot
+      p_plotly <- p_plotly %>%
+        plotly::add_annotations(
+          x = 0.5,
+          y = 0.95,
+          text = "Warning: Model failed to converge. Returning all years' estimates.",  # Annotation text
+          showarrow = FALSE,  #
+          font = list(size = 14, color = "red"),
+          align = "center",
+          xref = "paper",
+          yref = "paper"
+        )
+
+    } else if (convergence_status == "Success"){
+      print("Forecasted SAR for the next year is available but matches base plot")
+    }
 
     color<-"#024c63"
 
