@@ -10,6 +10,11 @@ app_server <- function(input, output, session) {
   load(system.file("data/forecast_output.rda", package = "SARforecastDLM"))
   get("forecast_output")
 
+  # Debugging observer to track tab changes
+  observe({
+    print(paste("Current tab:", input$tabs))
+  })
+
   ## About page
   mod_about_page_server("about_page_1")
 

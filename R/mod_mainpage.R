@@ -74,7 +74,7 @@ mod_mainpage_ui <- function(id){
               <p>In a DLM, forecasts can be generated using only past data, or by incorporating all available observations, including future data. However, due to the assumption of using a fixed observation error, our SAR estimates do not include future data, resulting in a more conservative forecast with wider confidence intervals.</p>
                <p>As such, we refer to the model output as a forecast since the estimate of SAR (<em>t</em> + 1) is conditioned on data from the starting year (<em>t</em> = 1) up to the year prior (<em>t</em> - 1). Each year's estimate is a one-step ahead forecast, incorporating the previous years' states and variance. </p>
 
-               <p>To explore how the forecast changes based on the number of years of input data, see <i class='fa fa-toggle-on' style='color: #024c63; font-size: 16px;'></i> switch option below the plot.</p>
+               <p>To explore how the forecast changes based on the number of years of input data, see <i class='fa fa-toggle-on' style='color: grey; font-size: 16px;'></i> switch option below the plot.</p>
               </div>")
             )
           )
@@ -113,8 +113,10 @@ mod_mainpage_ui <- function(id){
           column(
             width = 12,
           # mod_mainpage_submodule_modelrun_ui("submodule_modelrun_1")
-        HTML("<div style ='style='color: inherit; font-size: inherit; font-family: inherit;margin-left: 20px; margin-right: 20px; line-height: 1.5;'>
-As you adjust the year range, the model's ability to estimate underlying trends changes. With more years, the model captures patterns more reliably, but reducing the range can lead to convergence issues, especially with high variability. The DART and CJS SAR methods remain stable due to fixed observation error. In contrast, for the Scheuerell and Williams (2005) SAR method, the DLM estimates observation error, making it more sensitive to shorter time series and more likely to fail to converge as the range decreases.<br></br>"),
+        HTML("<div style ='color: inherit; font-size: inherit; font-family: inherit;margin-left: 20px; margin-right: 20px; line-height: 1.5;'>
+                As you adjust the year range, the model's ability to estimate underlying trends changes. With more years, the model captures patterns more reliably, but reducing the range can lead to convergence issues, especially with high variability in observed data. The DART and CJS SAR methods remain stable due to fixed observation process error. In contrast, for the Scheuerell and Williams (2005) SAR method, the DLM estimates observation error, making it more sensitive to shorter time series and more likely to fail to converge as the range decreases. Read more about these assumptions in the <em>Supplementary Information</em> tab.
+                <br></br>
+             </div>"),
         column(
           width = 4,
           # Add a slider input for year selection

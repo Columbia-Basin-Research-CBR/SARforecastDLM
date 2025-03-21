@@ -35,7 +35,9 @@
 
 <b>Model methods</b>
 <body>
-<p> A Dynamic Linear Model (DLM) was used to forecast salmon survival using marine indices following the methods outlined in 'Applied Time Series Analysis for Fisheries and Environmental Sciences', featuring Scheuerell and Williams (2005) previous work (Holmes et al., 2021). DLMs are state-space model that include time-varying parameters, which allows for short term forecasts to be generated for each time step. Such that the model relies on prior data to predict the year of interest in a one-year ahead forecast of salmon survival and relies on two equations, an observational equation (Eq. 1) and an evolution equation (Eq. 2). For the observational equation,</p>
+<p> A Dynamic Linear Model (DLM) was used to forecast salmon survival using marine indices following similar methods outlined in 'Applied Time Series Analysis for Fisheries and Environmental Sciences', featuring Scheuerell and Williams (2005) previous work (Holmes et al., 2021). This Shiny application, designed to explore marine indices alongside recent SAR estimation methods, incorporates key assumptions differing from Scheuerell and Williams (2005) to enable successful forecasting with SAR methods having fewer years (DART and CJS). These assumptions include fixing the observation process error for DART and CJS SARs and allowing the variance-covariance matrix of the evolution equation to vary between and covary among states, as discussed below.</p>
+
+<p>DLMs are state-space model that include time-varying parameters, which allows for short term forecasts to be generated for each time step. Such that the model relies on prior data to predict the year of interest in a one-year ahead forecast of salmon survival and relies on two equations, an observational equation (Eq. 1) and an evolution equation (Eq. 2). For the observational equation,</p>
 
   \[
   \begin{equation}
@@ -52,7 +54,8 @@
   \end{align}
   \]
 
-  <p>where the state variables, \( \alpha_t \) and \( \beta_t \), are the intercept and slope of the regression line at time \(t\), respectively. And \(w_{\alpha,t}\) and \(w_{\beta,t}\) are the random error associated with time \(t\) that affect the time-varying state variables \(alpha\) and \(beta\) from time \(t-1\) to \(t\). The process noise for the respective state variables \(alpha\) and \(beta\) are assumed to be normally distributed with mean 0 and variances \(q_{\alpha}\) and \(q_{\beta}\).</p>
+  <p>where the state variables, \( \alpha_t \) and \( \beta_t \), are the intercept and slope of the regression line at time \(t\), respectively. And \(w_{\alpha,t}\) and \(w_{\beta,t}\) are the random error associated with time \(t\) that affect the time-varying state variables \(alpha\) and \(beta\) from time \(t-1\) to \(t\).
+  The observation noise for the state variables, \(alpha\) and \(beta\) is assumed to follow a normal distribution with a mean of 0 and variances \(q_{\alpha}\) and \(q_{\beta}\) for the Scheurell and Williams (2005) SAR estimates. For the DART and CJS SAR methods, the model was initially run without covariates to estimate the observation process noise. This estimated value was then used as a fixed observation process error value when including covariates.
 
 <p>In the evolution equation,  \(m \times 1\) vector of regression parameters is defined as \(\theta_t\) and evolves through time according to the first-order Markov process:</p>
 
@@ -62,9 +65,23 @@
   \end{equation}
   \]
 
-  <p>where \(\mathbf{G}_t\) is the parameters evolution matrix, in this case,  an \(m \times m\) identity matrix that informs how the parameters, \(\boldsymbol{\theta}_{t-1}\), change through time. The system variance matrix, \(\mathbf{w}_t\), represents the evolution process error at time \(t\) (Pole et al., 1994). \(W_t\) is assumed to be multivariate normally distributed with mean 0 and covariance matrix \(\mathbf{Q}\), where \(\mathbf{Q} = \begin{bmatrix}q_\alpha& 0 \\ 0&q_\beta\end{bmatrix}\). </p>
+  <p>where \(\mathbf{G}_t\) is the parameters evolution matrix, in this case,  an \(m \times m\) identity matrix that informs how the parameters, \(\boldsymbol{\theta}_{t-1}\), change through time. The system variance matrix, \(\mathbf{w}_t\), represents the evolution process error at time \(t\) (Pole et al., 1994). \(W_t\) is assumed to be multivariate normally distributed with mean 0 and covariance matrix \(\mathbf{Q}\). For the Scheurell and Williams (2005) SAR method, \(\mathbf{Q}\) was assumed to be diagonal, with differing variances allowed for each state, and no covariance between the states (the off-diagonal elements were fixed at 0). </p>
 
-<p>To forecast one-step ahead, a Kalman filter was applied, which is a recursive algorithm that updates the state space parameters and variance at each time step, \(t\), based on the observed data at time \(t\). To forecast out of sample, the expected state space parameters and associated variance at the last time step, \(t\) were used. The forecasted value at time \(t + 1\) is the result of the expected state space parameter multiplied by the indice of interest at time \(t + 1\). The Kalman filter algorithm was implemented using the MARSS R package (Holmes et al., 2014).
+  \[
+  \begin{align}
+  \mathbf{Q_{\text{diagonal and fixed}}} = \begin{bmatrix}q_\alpha& 0 \\ 0&q_\beta\end{bmatrix}
+    \end{align}
+  \]
+
+  <p>Whereas, for DART and CJS SAR methods we set \(\mathbf{Q}\) to be unconstrained, allowing variance to be estimated for each state and to covary between states, </p>
+
+  \[
+  \begin{align}
+  \mathbf{Q_{\text{unconstrained}}} = \begin{bmatrix}q_\alpha & q_{\alpha\beta} \\q_{\alpha\beta} & q_\beta\end{bmatrix}
+    \end{align}
+  \]
+
+<p>To forecast one-step ahead, a Kalman filter was applied, which is a recursive algorithm that updates the state space parameters and variance at each time step, \(t\), based on the observed data at time \(t -1 \). To forecast on-step ahead, the expected state space parameters and associated variance at the last time step, \(t-1\) were used. The forecasted value at time \(t + 1\) is the result of the expected state space parameter multiplied by the indice of interest at time \(t + 1\). The Kalman filter algorithm was implemented using the MARSS R package (Holmes et al., 2014).
 
 </p>
 </body>
